@@ -4,8 +4,11 @@
 
 int main()
 {
-  int r = nandemu_init();
+  nandemu_reset();
 
-  printf("Hello, World! %d\n", r);
+  nandemu_error_t err = NANDEMU_E_NONE;
+
+  nandemu_block_erase(15, &err);
+
   return 0;
 }
