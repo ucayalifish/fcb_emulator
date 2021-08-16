@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-typedef enum {
+typedef enum
+{
   NANDEMU_E_NONE = 0,
   NANDEMU_E_BAD_BLOCK,
   NANDEMU_E_ECC,
@@ -18,8 +19,12 @@ typedef enum {
 
 typedef uint32_t block_id_t;
 
+typedef uint32_t page_id_t;
+
 void nandemu_reset(void);
 
 int nandemu_block_erase(block_id_t blk, nandemu_error_t * error);
+
+int nandemu_nand_prog(page_id_t zone_id, const uint8_t * data, nandemu_error_t * err);
 
 #endif //FCB_EMULATOR_NANDEMU_H
