@@ -10,33 +10,6 @@
  * NAND emulator based on one from https://github.com/dlbeer/dhara.
  */
 
-#define LOG2_ZONE_SIZE    9u
-#define LOG2_ZONES_PER_PAGE  2u
-#define LOG2_PAGE_SIZE  (LOG2_ZONE_SIZE + LOG2_ZONES_PER_PAGE)
-#define LOG2_PAGES_PER_BLOCK  6u
-#define LOG2_ZONES_PER_BLOCK  (LOG2_ZONES_PER_PAGE + LOG2_PAGES_PER_BLOCK)
-#define LOG2_BLOCK_SIZE (LOG2_PAGE_SIZE + LOG2_PAGES_PER_BLOCK)
-#define NUM_BLOCKS   4096U
-
-_Static_assert(LOG2_PAGE_SIZE == 11U);
-_Static_assert(LOG2_BLOCK_SIZE == 17U);
-
-#define ZONE_SIZE  (1u << LOG2_ZONE_SIZE)
-#define ZONES_PER_PAGE (1u << LOG2_ZONES_PER_PAGE)
-#define PAGE_SIZE    (1u << LOG2_PAGE_SIZE)
-#define ZONES_PER_BLOCK  (1u << LOG2_ZONES_PER_BLOCK)
-#define PAGES_PER_BLOCK    (1u << LOG2_PAGES_PER_BLOCK)
-#define BLOCK_SIZE    (1u << LOG2_BLOCK_SIZE)
-#define NUM_SECTORS (NUM_BLOCKS * PAGES_PER_BLOCK * ZONES_PER_PAGE)
-#define MEM_SIZE    (NUM_BLOCKS * BLOCK_SIZE)
-
-_Static_assert(ZONE_SIZE == 512U);
-_Static_assert(PAGE_SIZE == 2048U);
-_Static_assert(BLOCK_SIZE == 131072U);
-
-#define BLOCK_BAD_MARK    0x01u
-#define BLOCK_FAILED    0x02u
-
 struct sim_stats
 {
   int frozen;
@@ -115,14 +88,13 @@ static void timebomb_tick_(block_id_t const blk)
     }
 }
 
-static void seq_gen_(unsigned int seed, uint8_t * buf, size_t length)
+static void seq_gen_(unsigned int seed, uint8_t * buf, size_t const length)
 {
-  size_t i;
-
   srand(seed);
-  for (i = 0; i < length; i++)
+
+  for (size_t i = 0; i < length; i++)
     {
-      buf[i] = rand();
+      buf[i] = (uint8_t) rand();
     }
 }
 
@@ -134,11 +106,20 @@ static inline void set_error_(nandemu_error_t * err, nandemu_error_t v)
     }
 }
 
+void set_timebomb(block_id_t const blk, int const ttl)
+{
+  if (blk <= NUM_BLOCKS)
+    {
+      blocks_[blk].timebomb = ttl;
+    }
+}
+
 void nandemu_reset(void)
 {
   memset(&stats_, 0, sizeof(stats_));
   memset(blocks_, 0, sizeof(blocks_));
   memset(flash_.bytes, 0x55, sizeof(flash_.bytes));
+
   for (int i = 0; i < NUM_BLOCKS; i++)
     {
       blocks_[i].next_page = PAGES_PER_BLOCK;
@@ -149,13 +130,13 @@ int nandemu_block_erase(block_id_t const blk, nandemu_error_t * error)
 {
   if (blk > NUM_BLOCKS)
     {
-      fprintf(stderr, "sim: NAND_erase called on invalid block: %d\n", blk);
+      fprintf(stderr, "nandemu: nandemu_block_erase called on invalid block: %d\n", blk);
       abort();
     }
 
   if (blocks_[blk].flags & BLOCK_BAD_MARK)
     {
-      fprintf(stderr, "sim: NAND_erase called on block which is marked bad: %d\n", blk);
+      fprintf(stderr, "nandemu: nandemu_block_erase called on block which is marked bad: %d\n", blk);
       abort();
     }
 
@@ -188,10 +169,10 @@ int nandemu_block_erase(block_id_t const blk, nandemu_error_t * error)
   return 0;
 }
 
-int nandemu_nand_prog(page_id_t const zone_id, uint8_t const * data, nandemu_error_t * err)
+int nandemu_nand_sector_prog(page_id_t sector_id, uint8_t const * data, nandemu_error_t * err)
 {
-  block_id_t const bno = zone_id >> LOG2_ZONES_PER_BLOCK;
-  page_id_t const  pno = zone_id & ((1ull << LOG2_ZONES_PER_BLOCK) - 1);
+  block_id_t const bno = sector_id >> LOG2_ZONES_PER_BLOCK;
+  page_id_t const  pno = sector_id & ((1ull << LOG2_ZONES_PER_BLOCK) - 1);
 
   if (bno >= NUM_BLOCKS)
     {
@@ -201,14 +182,14 @@ int nandemu_nand_prog(page_id_t const zone_id, uint8_t const * data, nandemu_err
 
   if (blocks_[bno].flags & BLOCK_BAD_MARK)
     {
-      fprintf(stderr, "sim: NAND_prog called on block which is marked bad: %d\n", bno);
+      fprintf(stderr, "nandemu: NAND_prog called on block which is marked bad: %d\n", bno);
       abort();
     }
 
   if (pno < blocks_[bno].next_page)
     {
       fprintf(stderr,
-              "sim: NAND_prog: out-of-order sector programming. Block %d, sector %d (expected %d)\n",
+              "nandemu: NAND_prog: out-of-order sector programming. Block %d, sector %d (expected %d)\n",
               bno,
               pno,
               blocks_[bno].next_page);
@@ -224,7 +205,7 @@ int nandemu_nand_prog(page_id_t const zone_id, uint8_t const * data, nandemu_err
 
   timebomb_tick_(bno);
 
-  uint8_t * sector = flash_.bytes + (ptrdiff_t) ((uint64_t) zone_id << LOG2_PAGE_SIZE);
+  uint8_t * sector = flash_.bytes + (ptrdiff_t) ((uint64_t) sector_id << LOG2_PAGE_SIZE);
 
   if (blocks_[bno].flags & BLOCK_FAILED)
     {
@@ -233,12 +214,117 @@ int nandemu_nand_prog(page_id_t const zone_id, uint8_t const * data, nandemu_err
           stats_.prog_fail++;
         }
 
-      seq_gen_(zone_id * 57 + 29, sector, PAGE_SIZE);
+      seq_gen_(sector_id * 57 + 29, sector, PAGE_SIZE);
       set_error_(err, NANDEMU_E_BAD_BLOCK);
       return -1;
     }
 
   memcpy(sector, data, ZONE_SIZE);
   return 0;
+}
+
+int nandemu_page_prog(block_id_t const blk, page_id_t const pg, uint8_t const * data)
+{
+  if (blk >= NUM_BLOCKS)
+    {
+      fprintf(stderr, "nandemu: nandemu_page_prog called on invalid block: %d\n", blk);
+      return NANDEMU_E_NOT_FOUND;
+    }
+
+  if (pg >= PAGES_PER_BLOCK)
+    {
+      fprintf(stderr, "nandemu: nandemu_page_prog called on invalid page: %d\n", pg);
+      return NANDEMU_E_MAX;
+    }
+
+  if (blocks_[blk].flags & BLOCK_BAD_MARK)
+    {
+      fprintf(stderr, "nandemu: nandemu_page_prog called on block which is marked bad: %d\n", blk);
+      return NANDEMU_E_BAD_BLOCK;
+    }
+
+  if (pg < blocks_[blk].next_page)
+    {
+      fprintf(stderr,
+              "nandemu: nandemu_page_prog: out-of-order sector programming. Block %d, sector %d (expected %d)\n",
+              blk,
+              pg,
+              blocks_[blk].next_page);
+      abort();
+    }
+
+  if (!stats_.frozen)
+    {
+      stats_.prog++;
+    }
+
+  blocks_[blk].next_page = (int) (pg + 1);
+
+  timebomb_tick_(blk);
+
+  uint8_t * dest = flash_.blocks[blk].pages[pg].page;
+
+  if (blocks_[blk].flags & BLOCK_FAILED)
+    {
+      if (!stats_.frozen)
+        {
+          stats_.prog_fail++;
+        }
+
+      seq_gen_(pg * 57 + 29, dest, PAGE_SIZE);
+
+      return NANDEMU_E_BAD_BLOCK;
+    }
+
+  memcpy(dest, data, PAGE_SIZE);
+
+  return NANDEMU_E_NONE;
+}
+
+int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
+{
+  if (blk >= NUM_BLOCKS)
+    {
+      fprintf(stderr, "nandemu: nandemu_page_read called on invalid block: %d\n", blk);
+      return NANDEMU_E_NOT_FOUND;
+    }
+
+  if (pg >= PAGES_PER_BLOCK)
+    {
+      fprintf(stderr, "nandemu: nandemu_page_read called on invalid page: %d\n", pg);
+      return NANDEMU_E_MAX;
+    }
+
+  if (!stats_.frozen)
+    {
+      stats_.read++;
+      stats_.read_bytes += PAGE_SIZE;
+    }
+
+  timebomb_tick_(blk);
+
+  uint8_t * src = flash_.blocks[blk].pages[pg].page;
+
+  if (blocks_[blk].flags & BLOCK_FAILED)
+    {
+      if (!stats_.frozen)
+        {
+          stats_.prog_fail++;
+        }
+
+      seq_gen_(pg * 57 + 29, dest, PAGE_SIZE);
+
+      return NANDEMU_E_ECC;
+    }
+
+  if (!stats_.frozen)
+    {
+      stats_.read++;
+      stats_.read_bytes += PAGE_SIZE;
+    }
+
+  memcpy(dest, src, PAGE_SIZE);
+
+  return NANDEMU_E_NONE;
 }
 

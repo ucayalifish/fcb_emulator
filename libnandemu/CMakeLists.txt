@@ -15,6 +15,6 @@ add_library(nandemu STATIC
         ${LIB_HEADERS}
         )
 
-message(STATUS "Message: " ${CMAKE_SOURCE_DIR}/libnandemu)
-
 target_include_directories(nandemu PUBLIC ${CMAKE_SOURCE_DIR}/libnandemu)
+
+target_compile_options(nandemu PRIVATE "-g3")
