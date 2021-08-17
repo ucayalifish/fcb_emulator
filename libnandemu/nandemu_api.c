@@ -170,60 +170,6 @@ int nandemu_block_erase(block_id_t const blk, nandemu_error_t * error)
   return 0;
 }
 
-int nandemu_nand_sector_prog(page_id_t sector_id, uint8_t const * data, nandemu_error_t * err)
-{
-  block_id_t const bno = sector_id >> LOG2_ZONES_PER_BLOCK;
-  page_id_t const  pno = sector_id & ((1ull << LOG2_ZONES_PER_BLOCK) - 1);
-
-  if (bno >= NUM_BLOCKS)
-    {
-      fprintf(stderr, "sim: NAND_prog called on invalid block: %d\n", bno);
-      abort();
-    }
-
-  if (blocks_[bno].flags & BLOCK_BAD_MARK)
-    {
-      fprintf(stderr, "nandemu: NAND_prog called on block which is marked bad: %d\n", bno);
-      abort();
-    }
-
-  if (pno < blocks_[bno].next_page)
-    {
-      fprintf(stderr,
-              "nandemu: NAND_prog: out-of-order sector programming. Block %d, sector %d (expected %d)\n",
-              bno,
-              pno,
-              blocks_[bno].next_page);
-      abort();
-    }
-
-  if (!stats_.frozen)
-    {
-      stats_.prog++;
-    }
-
-  blocks_[bno].next_page = (int) (pno + 1);
-
-  timebomb_tick_(bno);
-
-  uint8_t * sector = flash_.bytes + (ptrdiff_t) ((uint64_t) sector_id << LOG2_PAGE_SIZE);
-
-  if (blocks_[bno].flags & BLOCK_FAILED)
-    {
-      if (!stats_.frozen)
-        {
-          stats_.prog_fail++;
-        }
-
-      seq_gen_(sector_id * 57 + 29, sector, PAGE_SIZE);
-      set_error_(err, NANDEMU_E_BAD_BLOCK);
-      return -1;
-    }
-
-  memcpy(sector, data, ZONE_SIZE);
-  return 0;
-}
-
 int nandemu_page_prog(block_id_t const blk, page_id_t const pg, uint8_t const * data)
 {
   if (blk >= NUM_BLOCKS)
