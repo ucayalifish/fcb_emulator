@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "nandemu.h"
 
@@ -106,7 +107,7 @@ static inline void set_error_(nandemu_error_t * err, nandemu_error_t v)
     }
 }
 
-void set_timebomb(block_id_t const blk, int const ttl)
+static void set_timebomb_(block_id_t const blk, int const ttl)
 {
   if (blk <= NUM_BLOCKS)
     {
@@ -295,6 +296,12 @@ int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
       return NANDEMU_E_MAX;
     }
 
+  if (blocks_[blk].flags & (BLOCK_BAD_MARK | BLOCK_FAILED))
+    {
+      fprintf(stderr, "nandemu: nandemu_page_read called on damaged block: %d\n", blk);
+      return NANDEMU_E_BAD_BLOCK;
+    }
+
   if (!stats_.frozen)
     {
       stats_.read++;
@@ -326,5 +333,29 @@ int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
   memcpy(dest, src, PAGE_SIZE);
 
   return NANDEMU_E_NONE;
+}
+
+void nandemu_inject_bads(void)
+{
+  srand(time(NULL) * 57 + 29);
+
+  for (int i = 0; i < 20; i++)
+    {
+      const int bno = rand() % NUM_BLOCKS;
+
+      blocks_[bno].flags |= BLOCK_BAD_MARK | BLOCK_FAILED;
+    }
+}
+
+void nandemu_inject_timebombs(void)
+{
+  srand(time(NULL) * 57 + 29);
+
+  for (int i = 0; i < 60; ++i)
+    {
+      int const blk = rand() % NUM_BLOCKS;
+      int const ttl = rand() % 31;
+      set_timebomb_(blk, ttl);
+    }
 }
 
