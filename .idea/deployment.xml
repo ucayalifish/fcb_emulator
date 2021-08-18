@@ -2,11 +2,14 @@
 <project version="4">
   <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
-      <paths name="xenial32 (ddb1be31-7b18-4d50-8e4c-2645c864294b)">
+      <paths name="VagrantLFS (8f0c2b39-c2d5-40ab-a381-8eaba7182734)">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/tmp/fcb_emulator" local="$PROJECT_DIR$" />
           </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/cmake-build-debug-vagrantlfs" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

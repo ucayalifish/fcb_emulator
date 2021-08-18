@@ -11,8 +11,8 @@
 #define LOG2_BLOCK_SIZE (LOG2_PAGE_SIZE + LOG2_PAGES_PER_BLOCK)
 #define NUM_BLOCKS 4096U
 
-_Static_assert(LOG2_PAGE_SIZE == 11U);
-_Static_assert(LOG2_BLOCK_SIZE == 17U);
+_Static_assert(LOG2_PAGE_SIZE == 11U, "ok");
+_Static_assert(LOG2_BLOCK_SIZE == 17U, "ok");
 
 #define ZONE_SIZE (1u << LOG2_ZONE_SIZE)
 #define ZONES_PER_PAGE (1u << LOG2_ZONES_PER_PAGE)
@@ -23,9 +23,9 @@ _Static_assert(LOG2_BLOCK_SIZE == 17U);
 #define NUM_SECTORS (NUM_BLOCKS * PAGES_PER_BLOCK * ZONES_PER_PAGE)
 #define MEM_SIZE (NUM_BLOCKS * BLOCK_SIZE)
 
-_Static_assert(ZONE_SIZE == 512U);
-_Static_assert(PAGE_SIZE == 2048U);
-_Static_assert(BLOCK_SIZE == 131072U);
+_Static_assert(ZONE_SIZE == 512U, "ok");
+_Static_assert(PAGE_SIZE == 2048U, "ok");
+_Static_assert(BLOCK_SIZE == 131072U, "ok");
 
 typedef enum nandemu_error_e
 {

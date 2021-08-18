@@ -1,7 +1,6 @@
 #include <stdint.h>
-#include <strings.h>
+#include <string.h>
 #include <stdio.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -51,7 +50,7 @@ union page_u
   uint8_t page[PAGE_SIZE];
 };
 
-_Static_assert(ZONES_PER_PAGE * ZONE_SIZE == PAGE_SIZE);
+_Static_assert(ZONES_PER_PAGE * ZONE_SIZE == PAGE_SIZE, "ok");
 
 union block_u
 {
@@ -59,7 +58,7 @@ union block_u
   uint8_t      bytes[BLOCK_SIZE];
 };
 
-_Static_assert(BLOCK_SIZE == PAGES_PER_BLOCK * PAGE_SIZE);
+_Static_assert(BLOCK_SIZE == PAGES_PER_BLOCK * PAGE_SIZE, "ok");
 
 static struct sim_stats    stats_;
 static struct block_status blocks_[NUM_BLOCKS];
@@ -72,7 +71,7 @@ static union flash_u
   uint8_t       bytes[MEM_SIZE];
 }                          flash_;
 
-_Static_assert(MEM_SIZE == ZONE_SIZE * ZONES_PER_PAGE * PAGES_PER_BLOCK * NUM_BLOCKS);
+_Static_assert(MEM_SIZE == ZONE_SIZE * ZONES_PER_PAGE * PAGES_PER_BLOCK * NUM_BLOCKS, "ok");
 
 static void timebomb_tick_(block_id_t const blk)
 {
