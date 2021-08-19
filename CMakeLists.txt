@@ -5,11 +5,13 @@ set(CMAKE_C_STANDARD 11)
 
 add_subdirectory("libnandemu")
 
+add_subdirectory("libmembuf")
+
 add_executable(fcb_emulator
         main.c
         utils.c
         )
 
-target_link_libraries(fcb_emulator PUBLIC nandemu)
+target_link_libraries(fcb_emulator PUBLIC nandemu membuf)
 
 target_compile_options(fcb_emulator PRIVATE "-g3")
