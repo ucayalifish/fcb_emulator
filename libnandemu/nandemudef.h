@@ -10,6 +10,7 @@
 #define LOG2_ZONES_PER_BLOCK (LOG2_ZONES_PER_PAGE + LOG2_PAGES_PER_BLOCK)
 #define LOG2_BLOCK_SIZE (LOG2_PAGE_SIZE + LOG2_PAGES_PER_BLOCK)
 #define NUM_BLOCKS 4096U
+#define MAX_BAD_BLOCKS 410 // 2% of bad blocks are allowed by manufaturer
 
 _Static_assert(LOG2_PAGE_SIZE == 11U, "ok");
 _Static_assert(LOG2_BLOCK_SIZE == 17U, "ok");
@@ -44,7 +45,6 @@ typedef enum nandemu_error_e
 typedef uint32_t block_id_t;
 
 typedef uint32_t page_id_t;
-
 
 #define BLOCK_BAD_MARK 0x01u
 

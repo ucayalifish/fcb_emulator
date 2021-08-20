@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,12 +107,15 @@ static inline void set_error_(nandemu_error_t * err, nandemu_error_t v)
     }
 }
 
-static void set_timebomb_(block_id_t const blk, int const ttl)
+static bool set_timebomb_(block_id_t const blk, int const ttl)
 {
-  if (blk <= NUM_BLOCKS)
+  if (blk <= NUM_BLOCKS && (blocks_[blk].flags & (BLOCK_BAD_MARK | BLOCK_FAILED)) == 0)
     {
       blocks_[blk].timebomb = ttl;
+      return true;
     }
+
+  return false;
 }
 
 void nandemu_reset(void)
@@ -120,13 +124,18 @@ void nandemu_reset(void)
   memset(blocks_, 0, sizeof(blocks_));
   memset(flash_.bytes, 0x55, sizeof(flash_.bytes));
 
+  stats_.is_erased = NUM_BLOCKS;
+
   for (int i = 0; i < NUM_BLOCKS; i++)
     {
       blocks_[i].next_page = PAGES_PER_BLOCK;
     }
+
+  nandemu_inject_bads();
+  nandemu_inject_timebombs();
 }
 
-int nandemu_block_erase(block_id_t const blk, nandemu_error_t * error)
+int nandemu_block_erase(block_id_t const blk)
 {
   if (blk > NUM_BLOCKS)
     {
@@ -159,44 +168,25 @@ int nandemu_block_erase(block_id_t const blk, nandemu_error_t * error)
         }
 
       seq_gen_(blk * 57 + 29, block, BLOCK_SIZE);
-      set_error_(error, NANDEMU_E_BAD_BLOCK);
-      return -1;
+      return NANDEMU_E_BAD_BLOCK;
     }
 
   memset(block, 0xff, BLOCK_SIZE);
-  return 0;
-
-  return 0;
+  return NANDEMU_E_NONE;
 }
 
-int nandemu_page_prog(block_id_t const blk, page_id_t const pg, uint8_t const * data)
+int nandemu_block_prog(block_id_t const blk, uint8_t const * data)
 {
   if (blk >= NUM_BLOCKS)
     {
-      fprintf(stderr, "nandemu: nandemu_page_prog called on invalid block: %d\n", blk);
-      return NANDEMU_E_NOT_FOUND;
-    }
-
-  if (pg >= PAGES_PER_BLOCK)
-    {
-      fprintf(stderr, "nandemu: nandemu_page_prog called on invalid page: %d\n", pg);
-      return NANDEMU_E_MAX;
+      fprintf(stderr, "\tnandemu: nandemu_block_prog called on invalid block: %d\n", blk);
+      abort();
     }
 
   if (blocks_[blk].flags & BLOCK_BAD_MARK)
     {
-      fprintf(stderr, "nandemu: nandemu_page_prog called on block which is marked bad: %d\n", blk);
+      fprintf(stderr, "\tnandemu: nandemu_block_prog called on block which is marked bad: %d\n", blk);
       return NANDEMU_E_BAD_BLOCK;
-    }
-
-  if (pg < blocks_[blk].next_page)
-    {
-      fprintf(stderr,
-              "nandemu: nandemu_page_prog: out-of-order sector programming. Block %d, sector %d (expected %d)\n",
-              blk,
-              pg,
-              blocks_[blk].next_page);
-      abort();
     }
 
   if (!stats_.frozen)
@@ -204,11 +194,10 @@ int nandemu_page_prog(block_id_t const blk, page_id_t const pg, uint8_t const * 
       stats_.prog++;
     }
 
-  blocks_[blk].next_page = (int) (pg + 1);
 
   timebomb_tick_(blk);
 
-  uint8_t * dest = flash_.blocks[blk].pages[pg].page;
+  uint8_t * dest = flash_.blocks[blk].bytes;
 
   if (blocks_[blk].flags & BLOCK_FAILED)
     {
@@ -217,12 +206,13 @@ int nandemu_page_prog(block_id_t const blk, page_id_t const pg, uint8_t const * 
           stats_.prog_fail++;
         }
 
-      seq_gen_(pg * 57 + 29, dest, PAGE_SIZE);
+      seq_gen_(blk * 57 + 29, dest, PAGE_SIZE);
 
-      return NANDEMU_E_BAD_BLOCK;
+      return NANDEMU_E_ECC;
     }
 
-  memcpy(dest, data, PAGE_SIZE);
+  memcpy(dest, data, BLOCK_SIZE);
+  blocks_[blk].next_page = PAGES_PER_BLOCK;
 
   return NANDEMU_E_NONE;
 }
@@ -232,13 +222,7 @@ int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
   if (blk >= NUM_BLOCKS)
     {
       fprintf(stderr, "nandemu: nandemu_page_read called on invalid block: %d\n", blk);
-      return NANDEMU_E_NOT_FOUND;
-    }
-
-  if (pg >= PAGES_PER_BLOCK)
-    {
-      fprintf(stderr, "nandemu: nandemu_page_read called on invalid page: %d\n", pg);
-      return NANDEMU_E_MAX;
+      abort();
     }
 
   if (blocks_[blk].flags & (BLOCK_BAD_MARK | BLOCK_FAILED))
@@ -255,7 +239,7 @@ int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
 
   timebomb_tick_(blk);
 
-  uint8_t * src = flash_.blocks[blk].pages[pg].page;
+  uint8_t * src = flash_.blocks[blk].bytes;
 
   if (blocks_[blk].flags & BLOCK_FAILED)
     {
@@ -264,7 +248,7 @@ int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
           stats_.prog_fail++;
         }
 
-      seq_gen_(pg * 57 + 29, dest, PAGE_SIZE);
+      seq_gen_(blk * 57 + 29, dest, PAGE_SIZE);
 
       return NANDEMU_E_ECC;
     }
@@ -272,10 +256,10 @@ int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
   if (!stats_.frozen)
     {
       stats_.read++;
-      stats_.read_bytes += PAGE_SIZE;
+      stats_.read_bytes += BLOCK_SIZE;
     }
 
-  memcpy(dest, src, PAGE_SIZE);
+  memcpy(dest, src, BLOCK_SIZE);
 
   return NANDEMU_E_NONE;
 }
@@ -284,23 +268,51 @@ void nandemu_inject_bads(void)
 {
   srand(time(NULL) * 57 + 29);
 
-  for (int i = 0; i < 20; i++)
-    {
-      const int bno = rand() % NUM_BLOCKS;
+  int count = 0;
 
-      blocks_[bno].flags |= BLOCK_BAD_MARK | BLOCK_FAILED;
+  while (count < MAX_BAD_BLOCKS)
+    {
+      int const bno = rand() % NUM_BLOCKS;
+      if ((blocks_[bno].flags & (BLOCK_BAD_MARK | BLOCK_FAILED)) == 0)
+        {
+          blocks_[bno].flags |= BLOCK_BAD_MARK | BLOCK_FAILED;
+          stats_.is_bad++;
+          stats_.mark_bad++;
+          stats_.is_erased--;
+          ++count;
+        }
     }
 }
 
 void nandemu_inject_timebombs(void)
 {
   srand(time(NULL) * 57 + 29);
+  int count = 0;
 
-  for (int i = 0; i < 60; ++i)
+  while (count < 2 * MAX_BAD_BLOCKS)
     {
       int const blk = rand() % NUM_BLOCKS;
       int const ttl = rand() % 31;
-      set_timebomb_(blk, ttl);
+
+      if (set_timebomb_(blk, ttl))
+        {
+          ++count;
+        }
     }
+}
+
+int nandemu_is_bad_number(void)
+{
+  return stats_.is_bad;
+}
+
+int nandemu_marked_bad_number(void)
+{
+  return stats_.mark_bad;
+}
+
+int nandemu_is_erased_number(void)
+{
+  return stats_.is_erased;
 }
 
