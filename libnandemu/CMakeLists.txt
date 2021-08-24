@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 project(nandemu C)
 
 set(LIB_SOURCES
-        src/nandemu_api.c
+        src/nandemu.c
         src/block_state.c
         )
 

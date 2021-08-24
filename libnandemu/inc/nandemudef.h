@@ -46,8 +46,8 @@ typedef uint32_t block_id_t;
 
 typedef uint32_t page_id_t;
 
-#define BLOCK_BAD_MARK (1U << 0)
+#define RESTORE_ODDS_NUMERATOR 3
 
-#define BLOCK_FAILED (1U << 1)
+#define RESTORE_ODDS_DENUMINATOR 1
 
 #endif //FCB_EMULATOR_NANDEMUDEF_H

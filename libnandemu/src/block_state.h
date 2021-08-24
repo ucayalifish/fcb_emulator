@@ -12,6 +12,12 @@ void block_state_timebomb_tick(block_id_t blk);
 
 bool block_state_failed(block_id_t blk);
 
+bool block_state_is_erased(block_id_t blk);
+
+void block_state_set_erased(block_id_t blk);
+
+void block_state_clear_erased(block_id_t);
+
 void block_state_inc_erase_failed(block_id_t blk);
 
 void block_state_inc_erase_success(block_id_t blk);

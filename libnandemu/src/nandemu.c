@@ -13,6 +13,7 @@
  * NAND emulator based on one from https://github.com/dlbeer/dhara.
  */
 
+// todo: remove?
 struct sim_stats
 {
   int frozen;
@@ -99,11 +100,13 @@ int nandemu_block_erase(block_id_t const blk)
   if (block_state_failed(blk))
     {
       block_state_inc_erase_failed(blk);
+      block_state_clear_erased(blk);
       seq_gen_(blk * 57 + 29, block, BLOCK_SIZE);
       return NANDEMU_E_BAD_BLOCK;
     }
 
   block_state_inc_erase_success(blk);
+  block_state_set_erased(blk);
   memset(block, 0xff, BLOCK_SIZE);
   return NANDEMU_E_NONE;
 }
@@ -139,17 +142,17 @@ int nandemu_block_prog(block_id_t const blk, uint8_t const * data)
   return NANDEMU_E_NONE;
 }
 
-int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
+int nandemu_block_read(block_id_t blk, page_id_t pg, uint8_t * dest)
 {
   if (blk >= NUM_BLOCKS)
     {
-      fprintf(stderr, "nandemu: nandemu_page_read called on invalid block: %d\n", blk);
+      fprintf(stderr, "nandemu: nandemu_block_read called on invalid block: %d\n", blk);
       abort();
     }
 
   if (block_state_is_marked_bad(blk))
     {
-      fprintf(stderr, "nandemu: nandemu_page_read called on damaged block: %d\n", blk);
+      fprintf(stderr, "nandemu: nandemu_block_read called on damaged block: %d\n", blk);
       return NANDEMU_E_BAD_BLOCK;
     }
 
@@ -170,8 +173,13 @@ int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest)
   return NANDEMU_E_NONE;
 }
 
-int nandemu_is_erased_number(void)
+bool nandemu_is_marked_bad(block_id_t const blk)
 {
-  return 0;
-}
+  if (blk >= NUM_BLOCKS)
+  {
+    fprintf(stderr, "nandemu: nandemu_is_marked_bad called on invalid block: %d\n", blk);
+    abort();
+  }
 
+  return block_state_is_marked_bad(blk);
+}

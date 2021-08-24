@@ -3,23 +3,47 @@
 #include <nandemu.h>
 #include "utils.h"
 
-static void nand_init_test()
+static void nand_init_test(void)
 {
   for (int run = 0; run < 10; ++run)
     {
       nandemu_reset();
       printf("Run %d: is bad-'%d', marked_bad-'%d', is erased-'%d'\n",
              run,
-             nandemu_number_of_bad(),
+             nandemu_number_of_failed(),
              nandemu_number_of_marked_bad(),
              nandemu_is_erased_number());
     }
 
 }
 
+static void nand_erase_test(void)
+{
+  nandemu_reset();
+
+  for (block_id_t blk = 0; blk < NUM_BLOCKS; ++blk)
+    {
+      if (nandemu_is_marked_bad(blk))
+        {
+          printf("Block %d is factory marked bad\n", blk);
+        }
+      else
+        {
+          int r = nandemu_block_erase(blk);
+          printf("Block %d erase result %d\n", blk, r);
+        }
+    }
+
+    printf("Results: is bad-'%d', marked_bad-'%d', is erased-'%d'\n",
+           nandemu_number_of_failed(),
+           nandemu_number_of_marked_bad(),
+           nandemu_is_erased_number());
+}
+
 int main()
 {
   nand_init_test();
+  nand_erase_test();
 
 /*
   nandemu_error_t err = NANDEMU_E_NONE;
