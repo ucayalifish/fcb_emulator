@@ -11,13 +11,9 @@ int nandemu_block_prog(block_id_t blk, uint8_t const * data);
 
 int nandemu_page_read(block_id_t blk, page_id_t pg, uint8_t * dest);
 
-void nandemu_inject_bads(void);
+int nandemu_number_of_bad(void);
 
-void nandemu_inject_timebombs(void);
-
-int nandemu_is_bad_number(void);
-
-int nandemu_marked_bad_number(void);
+int nandemu_number_of_marked_bad(void);
 
 int nandemu_is_erased_number(void);
 

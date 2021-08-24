@@ -46,8 +46,8 @@ typedef uint32_t block_id_t;
 
 typedef uint32_t page_id_t;
 
-#define BLOCK_BAD_MARK 0x01u
+#define BLOCK_BAD_MARK (1U << 0)
 
-#define BLOCK_FAILED 0x02u
+#define BLOCK_FAILED (1U << 1)
 
 #endif //FCB_EMULATOR_NANDEMUDEF_H

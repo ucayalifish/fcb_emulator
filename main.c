@@ -10,8 +10,8 @@ static void nand_init_test()
       nandemu_reset();
       printf("Run %d: is bad-'%d', marked_bad-'%d', is erased-'%d'\n",
              run,
-             nandemu_is_bad_number(),
-             nandemu_marked_bad_number(),
+             nandemu_number_of_bad(),
+             nandemu_number_of_marked_bad(),
              nandemu_is_erased_number());
     }
 
