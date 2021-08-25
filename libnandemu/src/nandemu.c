@@ -62,8 +62,6 @@ _Static_assert(MEM_SIZE == ZONE_SIZE * ZONES_PER_PAGE * PAGES_PER_BLOCK * NUM_BL
 
 static void seq_gen_(unsigned int seed, uint8_t * buf, size_t const length)
 {
-  srand(seed);
-
   for (size_t i = 0; i < length; i++)
     {
       buf[i] = (uint8_t) rand();
@@ -74,6 +72,8 @@ static void seq_gen_(unsigned int seed, uint8_t * buf, size_t const length)
 
 void nandemu_reset(void)
 {
+  srand(time(NULL) * 57 + 29);
+
   memset(flash_.bytes, 0x55, sizeof flash_.bytes);
 
   block_state_reset();
@@ -102,7 +102,7 @@ int nandemu_block_erase(block_id_t const blk)
       block_state_inc_erase_failed(blk);
       block_state_clear_erased(blk);
       seq_gen_(blk * 57 + 29, block, BLOCK_SIZE);
-      return NANDEMU_E_BAD_BLOCK;
+      return block_state_fail_count_exhausted(blk) ? NANDEMU_E_BAD_BLOCK : NANDEMU_E_ECC;
     }
 
   block_state_inc_erase_success(blk);
@@ -182,4 +182,15 @@ bool nandemu_is_marked_bad(block_id_t const blk)
   }
 
   return block_state_is_marked_bad(blk);
+}
+
+void nandemu_mark_bad(block_id_t blk)
+{
+  if (blk >= NUM_BLOCKS)
+  {
+    fprintf(stderr, "nandemu: nandemu_mark_bad called on invalid block: %d\n", blk);
+    abort();
+  }
+
+  block_state_mark_bad(blk);
 }

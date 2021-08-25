@@ -21,4 +21,6 @@ int nandemu_is_erased_number(void);
 
 bool nandemu_is_marked_bad(block_id_t blk);
 
+void nandemu_mark_bad(block_id_t blk);
+
 #endif //FCB_EMULATOR_NANDEMU_H

@@ -9,13 +9,19 @@
 #include "block_state.h"
 
 
-#define BLOCK_BAD_MARK_ (1U << 0)
+#define BLOCK_BAD_MARK_ (1U << 0U)
 
-#define BLOCK_FAILED_MASK_ 14u
+#define BLOCK_FAILED_ (1U << 1U)
 
-#define BLOCK_FAILED_ (1U << 1)
+#define BLOCK_FAILED_CNT_SHIFT_ 2U
 
-#define BLOCK_ERASED_ (1U << 4U)
+#define BLOCK_FAILED_CNT_MASK_ (7U << BLOCK_FAILED_CNT_SHIFT_)
+
+#define BLOCK_FAILED_CNT_WIDTH_ ((1U << 3U) - 1)
+
+#define BLOCK_ERASED_ (1U << 5U)
+
+_Static_assert(BLOCK_FAILED_CNT_WIDTH_ == 7, "");
 
 struct block_status
 {
@@ -26,9 +32,7 @@ struct block_status
    *  5 - is erased
    */
   unsigned int flags;
-  /* Timebomb counter: if non-zero, this is the number of
-	 * operations until permanent failure.
-	 */
+  /* the number of operations until permanent failure. */
   int          timebomb;
   int          erased;
   int          erase_failed;
@@ -42,13 +46,13 @@ static struct block_status blocks_[NUM_BLOCKS];
 
 static inline int get_failure_count_(unsigned const flags)
 {
-  return (int) ((flags & BLOCK_FAILED_MASK_) >> 1U);
+  return (int) ((flags & BLOCK_FAILED_CNT_MASK_) >> BLOCK_FAILED_CNT_SHIFT_);
 }
 
 static inline void set_failure_count_(struct block_status * b, int const new_val)
 {
-  b->flags &= ~BLOCK_FAILED_MASK_;
-  b->flags |= ((unsigned) new_val & 0x03U) << 2U;
+  b->flags &= ~BLOCK_FAILED_CNT_MASK_;
+  b->flags |= ((unsigned) new_val & BLOCK_FAILED_CNT_WIDTH_) << BLOCK_FAILED_CNT_SHIFT_;
 }
 
 static bool set_timebomb_(block_id_t const blk, int const ttl)
@@ -90,41 +94,42 @@ void block_state_timebomb_tick(block_id_t const blk)
 
   struct block_status * b = &blocks_[blk];
 
+  int const failed_count = get_failure_count_(b->flags);
+
   if (b->timebomb)
     {
       b->timebomb--;
 
       if (!b->timebomb)
         {
-          int const failed_count = get_failure_count_(b->flags);
-          switch (failed_count)
-            {
-              case 0:
-                {
-                  set_failure_count_(b, 1);
-                  b->flags |= BLOCK_FAILED_;
-                }
-              break;
-              case 3:
-                {
-                  b->flags |= BLOCK_FAILED_;
-                }
-              break;
-              default:
-                {
-                  int const count_to_set = do_restore_() ? 0 : failed_count + 1;
+          assert(get_failure_count_(b->flags) == 0);
+          assert((b->flags & BLOCK_FAILED_) == 0);
+          set_failure_count_(b, 1);
+          b->flags |= BLOCK_FAILED_;
+        }
+    }
+  else if ((b->flags & BLOCK_FAILED_) != 0 || failed_count > 0)
+    {
 
-                  if (do_restore_())
-                    {
-                      set_failure_count_(b, 1);
-                      b->flags |= ~BLOCK_FAILED_;
-                    }
-                  else
-                    {
-                      set_failure_count_(b, failed_count + 1);
-                      b->flags |= BLOCK_FAILED_;
-                    }
-                }
+      if (failed_count == 0)
+        {
+          set_failure_count_(b, 1);
+          b->flags |= BLOCK_FAILED_;
+        }
+      else if (failed_count >= MAX_FAILURE_CNT)
+        {
+          b->flags |= BLOCK_FAILED_;
+        }
+      else
+        {
+          if (do_restore_())
+            {
+              b->flags &= ~BLOCK_FAILED_;
+            }
+          else
+            {
+              set_failure_count_(b, failed_count + 1);
+              b->flags |= BLOCK_FAILED_;
             }
         }
     }
@@ -200,22 +205,35 @@ void block_state_clear_erased(block_id_t const blk)
   blocks_[blk].flags &= ~BLOCK_ERASED_;
 }
 
+bool block_state_fail_count_exhausted(block_id_t const blk)
+{
+  assert(blk < NUM_BLOCKS);
+
+  return get_failure_count_(blocks_[blk].flags) >= MAX_FAILURE_CNT;
+}
+
+void block_state_mark_bad(block_id_t const blk)
+{
+  assert(blk < NUM_BLOCKS);
+
+  blocks_[blk].flags &= ~BLOCK_FAILED_;
+  blocks_[blk].flags |= BLOCK_BAD_MARK_;
+}
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cppcoreguidelines-narrowing-conversions"
 #pragma ide diagnostic ignored "cert-msc50-cpp"
 
 static void inject_bads_(void)
 {
-  srand(time(NULL) * 57 + 29);
-
   int count = 0;
 
   while (count < MAX_BAD_BLOCKS)
     {
       int const bno = rand() % NUM_BLOCKS;
-      if ((blocks_[bno].flags & (BLOCK_BAD_MARK_ | BLOCK_FAILED_)) == 0)
+      if ((blocks_[bno].flags & BLOCK_BAD_MARK_) == 0)
         {
-          blocks_[bno].flags |= BLOCK_BAD_MARK_ | BLOCK_FAILED_;
+          block_state_mark_bad(bno);
           ++count;
         }
     }
@@ -223,13 +241,12 @@ static void inject_bads_(void)
 
 static void inject_timebombs_(void)
 {
-  srand(time(NULL) * 57 + 29);
   int count = 0;
 
   while (count < 2 * MAX_BAD_BLOCKS)
     {
       int const blk = rand() % NUM_BLOCKS;
-      int const ttl = rand() % 31;
+      int const ttl = rand() % MAX_TIMEBOMB_TTL;
 
       if (set_timebomb_(blk, ttl))
         {
@@ -238,21 +255,22 @@ static void inject_timebombs_(void)
     }
 }
 
-#define MID_OF_DISTRIBUTION_ (0x7fffffffULL * 397ull)
+#define SCALING_FACTOR_ 397U
 
-#define SCALING_FACTOR_ 397ull
+#define MID_OF_DISTRIBUTION_ (0x7fffU * SCALING_FACTOR_)
+
+#define CUT_OFF_ (MID_OF_DISTRIBUTION_ * RESTORE_ODDS_NUMERATOR / RESTORE_ODDS_DENOMINATOR);
 
 static bool do_restore_(void)
 {
 #if RESTORE_ODDS_NUMERATOR == 0
   return false;
-#elif RESTORE_ODDS_DENUMINATOR == 0
+#elif RESTORE_ODDS_DENOMINATOR == 0
   return true;
 #else
-  srand(time(NULL) * 57 + 29);
-  uint64_t const cut_off = MID_OF_DISTRIBUTION_ * RESTORE_ODDS_NUMERATOR / RESTORE_ODDS_DENUMINATOR;
-  uint64_t const rng     = (unsigned) rand() * SCALING_FACTOR_;
-  return rng % MID_OF_DISTRIBUTION_ <= cut_off;
+  unsigned const rng    = (unsigned) rand();
+  unsigned const scaled = rng * SCALING_FACTOR_;
+  return (scaled % MID_OF_DISTRIBUTION_) <= CUT_OFF_;
 #endif
 }
 
@@ -288,9 +306,9 @@ int nandemu_is_erased_number(void)
   int count = 0;
 
   for (int i = 0; i < NUM_BLOCKS; ++i)
-  {
-    count += (int) ((blocks_[i].flags & BLOCK_ERASED_) != 0);
-  }
+    {
+      count += block_state_is_erased(i) ? 1 : 0;
+    }
 
   return count;
 }
