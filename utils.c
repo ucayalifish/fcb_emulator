@@ -1,7 +1,7 @@
 #include "utils.h"
 #include <stdlib.h>
 
-void fill_random_buffer(unsigned const seed, uint8_t * dest, size_t const dest_size)
+void fill_random_buffer(uint8_t * dest, size_t const dest_size)
 {
   for (size_t i = 0; i < dest_size; i++)
   {

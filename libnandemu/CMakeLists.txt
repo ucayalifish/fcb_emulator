@@ -18,4 +18,9 @@ add_library(nandemu STATIC
 
 target_include_directories(nandemu PUBLIC ${CMAKE_SOURCE_DIR}/libnandemu/inc)
 
-target_compile_options(nandemu PRIVATE "-g3")
+target_compile_options(nandemu PRIVATE
+        "-g3"
+        "-Wall"
+        "-Wextra"
+        "--warn-no-unknown-pragmas"
+        )

@@ -14,4 +14,8 @@ add_executable(fcb_emulator
 
 target_link_libraries(fcb_emulator PUBLIC nandemu membuf)
 
-target_compile_options(fcb_emulator PRIVATE "-g3")
+target_compile_options(fcb_emulator PRIVATE
+        "-g3"
+        "-Wall"
+        "-Wextra"
+        )

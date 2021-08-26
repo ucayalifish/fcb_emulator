@@ -60,7 +60,7 @@ _Static_assert(MEM_SIZE == ZONE_SIZE * ZONES_PER_PAGE * PAGES_PER_BLOCK * NUM_BL
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cert-msc50-cpp"
 
-static void seq_gen_(unsigned int seed, uint8_t * buf, size_t const length)
+static void seq_gen_(uint8_t * buf, size_t const length)
 {
   for (size_t i = 0; i < length; i++)
     {
@@ -101,7 +101,7 @@ int nandemu_block_erase(block_id_t const blk)
     {
       block_state_inc_erase_failed(blk);
       block_state_clear_erased(blk);
-      seq_gen_(blk * 57 + 29, block, BLOCK_SIZE);
+      seq_gen_(block, BLOCK_SIZE);
       return block_state_fail_count_exhausted(blk) ? NANDEMU_E_BAD_BLOCK : NANDEMU_E_ECC;
     }
 
@@ -132,7 +132,7 @@ int nandemu_block_prog(block_id_t const blk, uint8_t const * data)
   if (block_state_failed(blk))
     {
       block_state_inc_prog_failed(blk);
-      seq_gen_(blk * 57 + 29, dest, PAGE_SIZE);
+      seq_gen_(dest, PAGE_SIZE);
       return NANDEMU_E_ECC;
     }
 
@@ -142,7 +142,7 @@ int nandemu_block_prog(block_id_t const blk, uint8_t const * data)
   return NANDEMU_E_NONE;
 }
 
-int nandemu_block_read(block_id_t blk, page_id_t pg, uint8_t * dest)
+int nandemu_block_read(block_id_t blk, uint8_t * dest)
 {
   if (blk >= NUM_BLOCKS)
     {
@@ -163,7 +163,7 @@ int nandemu_block_read(block_id_t blk, page_id_t pg, uint8_t * dest)
   if (block_state_failed(blk))
     {
       block_state_inc_read_failed(blk);
-      seq_gen_(blk * 57 + 29, dest, PAGE_SIZE);
+      seq_gen_(dest, PAGE_SIZE);
       return NANDEMU_E_ECC;
     }
 

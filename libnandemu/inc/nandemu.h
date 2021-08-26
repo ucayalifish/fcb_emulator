@@ -11,7 +11,7 @@ int nandemu_block_erase(block_id_t blk);
 
 int nandemu_block_prog(block_id_t blk, uint8_t const * data);
 
-int nandemu_block_read(block_id_t blk, page_id_t pg, uint8_t * dest);
+int nandemu_block_read(block_id_t blk, uint8_t * dest);
 
 int nandemu_number_of_failed(void);
 

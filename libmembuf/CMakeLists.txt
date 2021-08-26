@@ -19,4 +19,8 @@ target_include_directories(membuf PUBLIC ${CMAKE_SOURCE_DIR}/libmembuf)
 
 target_link_libraries(membuf PUBLIC nandemu)
 
-target_compile_options(membuf PRIVATE "-g3")
+target_compile_options(membuf PRIVATE
+        "-g3"
+        "-Wall"
+        "-Wextra"
+        )
