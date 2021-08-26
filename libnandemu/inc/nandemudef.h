@@ -46,18 +46,20 @@ typedef uint32_t block_id_t;
 
 typedef uint32_t page_id_t;
 
-#define MAX_TIMEBOMB_TTL 64
+#define MIN_TIMEBOMB_TTL 32
+
+#define MAX_TIMEBOMB_TTL 256
 
 /**
  * Constants govern calculation of odds for recoverable/unrecoverable error result
  * of erase/read/write to NAND block due to timebomb firing.
- * Values 1 : 3 yield approximately 1 unrecoverable to 3 recoverable errors
- * in 5 consecutive attempts to erase/read/write to emulated NAND block.
+ * Values 3 : 13 yield approximately 1 : 3 odds of recoverable error
+ * of an attempt to erase/read/write to emulated NAND block.
  */
-#define RESTORE_ODDS_NUMERATOR 1
+#define RESTORE_ODDS_NUMERATOR 3U
 
-#define RESTORE_ODDS_DENOMINATOR 3
+#define RESTORE_ODDS_DENOMINATOR 13U
 
-#define MAX_FAILURE_CNT 5 // 3 bits, 7 max
+#define MAX_FAILURE_CNT 4 // 3 bits, 7 max
 
 #endif //FCB_EMULATOR_NANDEMUDEF_H

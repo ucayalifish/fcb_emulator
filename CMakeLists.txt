@@ -10,7 +10,7 @@ add_subdirectory("libmembuf")
 add_executable(fcb_emulator
         main.c
         utils.c
-        )
+        experimental.c)
 
 target_link_libraries(fcb_emulator PUBLIC nandemu membuf)
 

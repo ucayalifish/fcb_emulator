@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 #include <assert.h>
 
 #include <nandemudef.h>
@@ -22,6 +21,8 @@
 #define BLOCK_ERASED_ (1U << 5U)
 
 _Static_assert(BLOCK_FAILED_CNT_WIDTH_ == 7, "");
+
+#define TIMEBOMB_FIRED_ -1
 
 struct block_status
 {
@@ -58,6 +59,7 @@ static inline void set_failure_count_(struct block_status * b, int const new_val
 static bool set_timebomb_(block_id_t const blk, int const ttl)
 {
   assert(blk < NUM_BLOCKS);
+  assert(ttl > 0);
 
   if ((blocks_[blk].flags & (BLOCK_BAD_MARK_ | BLOCK_FAILED_)) == 0)
     {
@@ -72,7 +74,13 @@ static void inject_bads_(void);
 
 static void inject_timebombs_(void);
 
+static bool roll_the_dice_(unsigned num, unsigned denom);
+
+#if 0
+
 static bool do_restore_(void);
+
+#endif
 
 void block_state_reset(void)
 {
@@ -96,7 +104,7 @@ void block_state_timebomb_tick(block_id_t const blk)
 
   int const failed_count = get_failure_count_(b->flags);
 
-  if (b->timebomb)
+  if (b->timebomb > 0)
     {
       b->timebomb--;
 
@@ -104,11 +112,11 @@ void block_state_timebomb_tick(block_id_t const blk)
         {
           assert(get_failure_count_(b->flags) == 0);
           assert((b->flags & BLOCK_FAILED_) == 0);
-          set_failure_count_(b, 1);
-          b->flags |= BLOCK_FAILED_;
+          b->timebomb = TIMEBOMB_FIRED_;
         }
     }
-  else if ((b->flags & BLOCK_FAILED_) != 0 || failed_count > 0)
+
+  if ((b->flags & BLOCK_FAILED_) != 0 || b->timebomb == TIMEBOMB_FIRED_)
     {
 
       if (failed_count == 0)
@@ -118,11 +126,11 @@ void block_state_timebomb_tick(block_id_t const blk)
         }
       else if (failed_count >= MAX_FAILURE_CNT)
         {
-          b->flags |= BLOCK_FAILED_;
+          b->flags |= BLOCK_FAILED_; // always failed after MAX_FAILURE_CNT failures
         }
       else
         {
-          if (do_restore_())
+          if (roll_the_dice_(RESTORE_ODDS_NUMERATOR, RESTORE_ODDS_DENOMINATOR))
             {
               b->flags &= ~BLOCK_FAILED_;
             }
@@ -246,7 +254,7 @@ static void inject_timebombs_(void)
   while (count < 2 * MAX_BAD_BLOCKS)
     {
       int const blk = rand() % NUM_BLOCKS;
-      int const ttl = rand() % MAX_TIMEBOMB_TTL;
+      int const ttl = MIN_TIMEBOMB_TTL + rand() % MAX_TIMEBOMB_TTL;
 
       if (set_timebomb_(blk, ttl))
         {
@@ -261,17 +269,23 @@ static void inject_timebombs_(void)
 
 #define CUT_OFF_ (MID_OF_DISTRIBUTION_ * RESTORE_ODDS_NUMERATOR / RESTORE_ODDS_DENOMINATOR);
 
-static bool do_restore_(void)
+static bool roll_the_dice_(unsigned const num, unsigned const denom)
 {
-#if RESTORE_ODDS_NUMERATOR == 0
-  return false;
-#elif RESTORE_ODDS_DENOMINATOR == 0
-  return true;
-#else
-  unsigned const rng    = (unsigned) rand();
-  unsigned const scaled = rng * SCALING_FACTOR_;
-  return (scaled % MID_OF_DISTRIBUTION_) <= CUT_OFF_;
-#endif
+  if (num == 0)
+    {
+      return false;
+    }
+  else if (denom == 0)
+    {
+      return true;
+    }
+  else
+    {
+      unsigned const cut_off = MID_OF_DISTRIBUTION_ * num / denom;
+      unsigned const rn      = (unsigned) rand();
+      unsigned const scaled  = rn * SCALING_FACTOR_;
+      return (scaled % MID_OF_DISTRIBUTION_) > cut_off;
+    }
 }
 
 #pragma clang diagnostic pop
@@ -309,6 +323,18 @@ int nandemu_is_erased_number(void)
     {
       count += block_state_is_erased(i) ? 1 : 0;
     }
+
+  return count;
+}
+
+int nandemu_timebombed_number(void)
+{
+  int count = 0;
+
+  for (int i = 0; i < NUM_BLOCKS; ++i)
+  {
+    count += blocks_[i].timebomb > 0;
+  }
 
   return count;
 }

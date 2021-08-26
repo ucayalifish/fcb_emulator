@@ -23,4 +23,6 @@ bool nandemu_is_marked_bad(block_id_t blk);
 
 void nandemu_mark_bad(block_id_t blk);
 
+int nandemu_timebombed_number(void);
+
 #endif //FCB_EMULATOR_NANDEMU_H
