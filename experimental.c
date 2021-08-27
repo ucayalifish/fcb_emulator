@@ -159,7 +159,7 @@ static uint16_t xorshift16_1_(uint32_t in)
   return (uint16_t) in & 0xffffU;
 }
 
-static uint16_t xorshift16_2_(uint32_t in)
+__attribute__((unused)) static uint16_t xorshift16_2_(uint32_t in)
 {
   in ^= in >> 7U;
   in ^= in << 9U;
@@ -175,7 +175,7 @@ void test_xorshift16(void)
 
   do
     {
-      value = xorshift16_2_(value);
+      value = xorshift16_1_(value);
       ++period;
 //      printf("\tvalue = 0x%x, period = '%d'\n", value, period);
     }

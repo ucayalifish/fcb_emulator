@@ -294,7 +294,7 @@ int nandemu_number_of_failed(void)
 {
   int count = 0;
 
-  for (int i = 0; i < NUM_BLOCKS; ++i)
+  for (size_t i = 0; i < NUM_BLOCKS; ++i)
     {
       count += (int) ((blocks_[i].flags & BLOCK_FAILED_) != 0);
     }
@@ -307,7 +307,7 @@ int nandemu_number_of_marked_bad(void)
 {
   int count = 0;
 
-  for (int i = 0; i < NUM_BLOCKS; ++i)
+  for (size_t i = 0; i < NUM_BLOCKS; ++i)
     {
       count += (int) ((blocks_[i].flags & BLOCK_BAD_MARK_) != 0);
     }
@@ -319,7 +319,7 @@ int nandemu_is_erased_number(void)
 {
   int count = 0;
 
-  for (int i = 0; i < NUM_BLOCKS; ++i)
+  for (size_t i = 0; i < NUM_BLOCKS; ++i)
     {
       count += block_state_is_erased(i) ? 1 : 0;
     }
@@ -331,7 +331,7 @@ int nandemu_timebombed_number(void)
 {
   int count = 0;
 
-  for (int i = 0; i < NUM_BLOCKS; ++i)
+  for (size_t i = 0; i < NUM_BLOCKS; ++i)
   {
     count += blocks_[i].timebomb > 0;
   }

@@ -7,12 +7,14 @@ add_subdirectory("libnandemu")
 
 add_subdirectory("libmembuf")
 
+add_subdirectory("libfcb")
+
 add_executable(fcb_emulator
         main.c
         utils.c
-        experimental.c)
+        experimental.c libfcb/inc/fcb.h libfcb/src/utils.c libfcb/src/utils.h)
 
-target_link_libraries(fcb_emulator PUBLIC nandemu membuf)
+target_link_libraries(fcb_emulator PUBLIC nandemu membuf fcb)
 
 target_compile_options(fcb_emulator PRIVATE
         "-g3"

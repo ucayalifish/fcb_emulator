@@ -6,8 +6,9 @@
 #include <membuf.h>
 #include "experimental.h"
 #include "utils.h"
+#include "libfcb/inc/fcb.h"
 
-static void nand_init_test(void)
+__attribute__((unused)) static void nand_init_test(void)
 {
   nandemu_reset();
   printf("nand_init_test: is bad-'%d', marked_bad-'%d', is erased-'%d'\n",
@@ -16,7 +17,7 @@ static void nand_init_test(void)
          nandemu_is_erased_number());
 }
 
-static void nand_erase_test(void)
+__attribute__((unused)) static void nand_erase_test(void)
 {
   nandemu_reset();
   printf("nand_erase_test: is bad-'%d', marked_bad-'%d', is erased-'%d', is timebombed-'%d'\n",
@@ -59,14 +60,14 @@ static void nand_erase_test(void)
     }
 }
 
-static void do_restore_experiment(void)
+__attribute__((unused)) static void do_restore_experiment(void)
 {
   struct decision_result_s means = test_do_restore();
 
   printf("Do restore means: positive-'%d', negative-'%d'\n", means.positive, means.negative);
 }
 
-static void num_of_attempts_experiment(void)
+__attribute__((unused)) static void num_of_attempts_experiment(void)
 {
   int max, min, mean;
   test_number_of_attempts_before_failure(&max, &min, &mean);
@@ -97,7 +98,8 @@ static void membuf_shuffle_deshuffle_test(void)
           printf("Byte %d not de-shuffled: found 0x'%u', expected 0x'%u'\n", i, dest[i], reference[i]);
         }
     }
-
+uint64_t magic = FCB_MAGIC;
+  (void) magic;
 }
 
 int main()
