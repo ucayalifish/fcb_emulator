@@ -3,7 +3,9 @@
 #include <time.h>
 
 #include <nandemu.h>
+#include <membuf.h>
 #include "experimental.h"
+#include "utils.h"
 
 static void nand_init_test(void)
 {
@@ -71,12 +73,42 @@ static void num_of_attempts_experiment(void)
   printf("Attempts before failure: max-'%d', min-'%d', mean-'%d'\n", max, min, mean);
 }
 
+static void membuf_shuffle_deshuffle_test(void)
+{
+  membuf_reset();
+  uint8_t * dest = membuf_current_position();
+  size_t const copy_size = membuf_bytes_available();
+  uint8_t reference[copy_size];
+  fill_random_buffer(reference, copy_size);
+  membuf_write_bytes(reference, copy_size);
+  membuf_shuffle_buffer();
+  for(size_t i = 0; i < copy_size; ++i)
+    {
+      if (dest[i] == reference[i])
+        {
+          printf("Byte %d not shuffled: found 0x'%u', expected 0x'%u'\n", i, dest[i], reference[i]);
+        }
+    }
+  membuf_shuffle_buffer();
+  for(size_t i = 0; i < copy_size; ++i)
+    {
+      if (dest[i] != reference[i])
+        {
+          printf("Byte %d not de-shuffled: found 0x'%u', expected 0x'%u'\n", i, dest[i], reference[i]);
+        }
+    }
+
+}
+
 int main()
 {
 //  do_restore_experiment();
 //  num_of_attempts_experiment();
 //  nand_init_test();
-  nand_erase_test();
+//  nand_erase_test();
+//  test_xorshift32();
+//  test_xorshift16();
+  membuf_shuffle_deshuffle_test();
 
   return 0;
 }

@@ -116,3 +116,70 @@ void test_number_of_attempts_before_failure(int * max, int * min, int * mean)
 
   *mean = (int) (local_mean / NUM_OF_DO_RESTORE_RUNS);
 }
+
+static uint32_t xorshift32_(uint32_t in)
+{
+#if 0
+  in |= in == 0;
+  in ^= (in & 0x0007ffff) << 13U;
+  in ^= in >> 17U;
+  in ^= (in & 0x07ffffffU) << 5U;
+  return in & 0xffffffffU;
+#else
+  in ^= in << 13U;
+  in ^= in >> 17U;
+  in ^= in << 5U;
+  return in;
+#endif
+}
+
+void test_xorshift32(void)
+{
+  uint32_t const start  = 0xace1U;
+  uint32_t       value  = start;
+  uint64_t       period = 0;
+
+  do
+    {
+      value = xorshift32_(value);
+      ++period;
+//      printf("\tvalue = 0x%x, period = '%d'\n", value, period);
+    }
+  while (value != start && period < ULONG_LONG_MAX - 1);
+
+  printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULONG_LONG_MAX);
+}
+
+static uint16_t xorshift16_1_(uint32_t in)
+{
+  in |= in == 0;
+  in ^= (in & 0x07ffU) << 5U;
+  in ^= in >> 7U;
+  in ^= (in & 0x0003U) << 14U;
+  return (uint16_t) in & 0xffffU;
+}
+
+static uint16_t xorshift16_2_(uint32_t in)
+{
+  in ^= in >> 7U;
+  in ^= in << 9U;
+  in ^= in >> 13U;
+  return (uint16_t) in & 0xffffU;
+}
+
+void test_xorshift16(void)
+{
+  uint16_t const start  = 0xace1U;
+  uint16_t       value  = start;
+  uint64_t       period = 0;
+
+  do
+    {
+      value = xorshift16_2_(value);
+      ++period;
+//      printf("\tvalue = 0x%x, period = '%d'\n", value, period);
+    }
+  while (value != start && period < ULONG_LONG_MAX - 1);
+
+  printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULONG_LONG_MAX);
+}

@@ -20,4 +20,8 @@ struct decision_result_s test_do_restore(void);
 
 void test_number_of_attempts_before_failure(int * max, int * min, int * mean);
 
+void test_xorshift32(void);
+
+void test_xorshift16(void);
+
 #endif //FCB_EMULATOR_EXPERIMENTAL_H

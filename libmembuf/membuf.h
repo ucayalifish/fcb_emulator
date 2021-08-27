@@ -10,8 +10,12 @@ size_t membuf_bytes_available(void);
 
 uint8_t * membuf_current_position(void);
 
-int membuf_skip_bytes(ptrdiff_t how_many);
+ptrdiff_t membuf_skip_bytes(size_t how_many);
 
-void membuf_rewind(void);
+ptrdiff_t membuf_rewind(ptrdiff_t to);
+
+ptrdiff_t membuf_write_bytes(uint8_t const * data, size_t sz);
+
+void membuf_shuffle_buffer(void);
 
 #endif //FCB_EMULATOR_MEMBUF_H
