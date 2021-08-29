@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits.h>
 #include <time.h>
 #include <stdint.h>
 #include <string.h>
@@ -145,9 +146,14 @@ void test_xorshift32(void)
       ++period;
 //      printf("\tvalue = 0x%x, period = '%d'\n", value, period);
     }
-  while (value != start && period < ULONG_LONG_MAX - 1);
+    while (value != start && period < ULLONG_MAX - 1);
 
-  printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULONG_LONG_MAX);
+    // todo: make conditional compilation right
+#if 0
+  printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULLONG_MAX);
+#else
+  printf("test_xorshift32: period = '%llu' of max '%llu'\n", period, ULLONG_MAX);
+#endif
 }
 
 static uint16_t xorshift16_1_(uint32_t in)
@@ -179,7 +185,12 @@ void test_xorshift16(void)
       ++period;
 //      printf("\tvalue = 0x%x, period = '%d'\n", value, period);
     }
-  while (value != start && period < ULONG_LONG_MAX - 1);
+    while (value != start && period < ULLONG_MAX - 1);
 
-  printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULONG_LONG_MAX);
+    // todo: make conditional compilation right
+#if 0
+  printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULLONG_MAX);
+#else
+  printf("test_xorshift32: period = '%llu' of max '%llu'\n", period, ULLONG_MAX);
+#endif
 }
