@@ -148,11 +148,12 @@ void test_xorshift32(void)
     }
     while (value != start && period < ULLONG_MAX - 1);
 
-    // todo: make conditional compilation right
-#if 0
+#ifdef __GNUC__
+#ifdef __MINGW32__
   printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULLONG_MAX);
 #else
   printf("test_xorshift32: period = '%llu' of max '%llu'\n", period, ULLONG_MAX);
+#endif
 #endif
 }
 
@@ -187,10 +188,11 @@ void test_xorshift16(void)
     }
     while (value != start && period < ULLONG_MAX - 1);
 
-    // todo: make conditional compilation right
-#if 0
+#ifdef __GNUC__
+#ifdef __MINGW32__
   printf("test_xorshift32: period = '%I64u' of max '%I64u'\n", period, ULLONG_MAX);
 #else
   printf("test_xorshift32: period = '%llu' of max '%llu'\n", period, ULLONG_MAX);
+#endif
 #endif
 }
