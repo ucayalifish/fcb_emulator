@@ -74,7 +74,7 @@ __attribute__((unused)) static void num_of_attempts_experiment(void)
   printf("Attempts before failure: max-'%d', min-'%d', mean-'%d'\n", max, min, mean);
 }
 
-static void membuf_shuffle_deshuffle_test(void)
+static void membuf_shuffle_de_shuffle_test(void)
 {
   membuf_reset();
   uint8_t * dest = membuf_current_position();
@@ -110,7 +110,7 @@ int main()
 //  nand_erase_test();
 //  test_xorshift32();
 //  test_xorshift16();
-  membuf_shuffle_deshuffle_test();
+  membuf_shuffle_de_shuffle_test();
 
   return 0;
 }

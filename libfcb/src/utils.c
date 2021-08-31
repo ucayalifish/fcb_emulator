@@ -1,3 +1,5 @@
+#include <time.h>
+#include <stdlib.h>
 #include "utils.h"
 
 /**
@@ -85,5 +87,13 @@ uint32_t crc32_nand(uint8_t const * block, size_t const len, uint32_t c)
     c = (c >> 8) ^ reduce[(c ^ block[i]) & 0xff] ^ 0xff000000;
 
   return c;
+}
+
+uint64_t timestamp_marker(void)
+{
+  uint64_t ret = time(NULL);
+  ret <<= 7U;
+  int const msecs = rand() & ((1U << 7U) -1U);
+  return ret + msecs;
 }
 

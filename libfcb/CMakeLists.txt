@@ -16,3 +16,10 @@ add_library(fcb STATIC
         )
 
 target_include_directories(fcb PUBLIC ${CMAKE_SOURCE_DIR}/libfcb/inc)
+
+target_compile_options(fcb PRIVATE
+        "-g3"
+        "-Wall"
+        "-Wextra"
+        "--warn-no-unknown-pragmas"
+        )
