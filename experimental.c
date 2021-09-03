@@ -5,18 +5,20 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <nandemudef.h>
+#include <nandemu.h>
 
 #include "experimental.h"
 
-#define RESTORE_ODDS_NUMERATOR 3
+#define RESTORE_ODDS_NUMERATOR_ 3
 
-#define RESTORE_ODDS_DENOMINATOR 13
+#define RESTORE_ODDS_DENOMINATOR_ 13
 
 #define SCALING_FACTOR_ 397U
 
 #define MID_OF_DISTRIBUTION_ (0x7fffU * SCALING_FACTOR_)
 
-#define CUT_OFF_ (MID_OF_DISTRIBUTION_ * RESTORE_ODDS_NUMERATOR / RESTORE_ODDS_DENOMINATOR);
+#define CUT_OFF_ (MID_OF_DISTRIBUTION_ * RESTORE_ODDS_NUMERATOR_ / RESTORE_ODDS_DENOMINATOR_);
 
 bool do_restore_test_generator(void)
 {
@@ -146,7 +148,7 @@ void test_xorshift32(void)
       ++period;
 //      printf("\tvalue = 0x%x, period = '%d'\n", value, period);
     }
-    while (value != start && period < ULLONG_MAX - 1);
+  while (value != start && period < ULLONG_MAX - 1);
 
 #ifdef __GNUC__
 #ifdef __MINGW32__
@@ -186,7 +188,7 @@ void test_xorshift16(void)
       ++period;
 //      printf("\tvalue = 0x%x, period = '%d'\n", value, period);
     }
-    while (value != start && period < ULLONG_MAX - 1);
+  while (value != start && period < ULLONG_MAX - 1);
 
 #ifdef __GNUC__
 #ifdef __MINGW32__
@@ -195,4 +197,21 @@ void test_xorshift16(void)
   printf("test_xorshift32: period = '%llu' of max '%llu'\n", period, ULLONG_MAX);
 #endif
 #endif
+}
+
+block_id_t exp_find_empty_block(block_id_t const start_from)
+{
+  block_id_t current = start_from;
+  do
+    {
+      if (nandemu_is_not_bad_and_empty(current))
+        {
+          return current;
+        }
+
+      current = (current + 1) % NUM_BLOCKS;
+    }
+  while (current != start_from);
+
+  return 0xffffffffU;
 }

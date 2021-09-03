@@ -132,7 +132,7 @@ int nandemu_block_prog(block_id_t const blk, uint8_t const * data)
   if (block_state_failed(blk))
     {
       block_state_inc_prog_failed(blk);
-      seq_gen_(dest, PAGE_SIZE);
+      seq_gen_(dest, BLOCK_SIZE);
       return NANDEMU_E_ECC;
     }
 
@@ -176,21 +176,46 @@ int nandemu_block_read(block_id_t blk, uint8_t * dest)
 bool nandemu_is_marked_bad(block_id_t const blk)
 {
   if (blk >= NUM_BLOCKS)
-  {
-    fprintf(stderr, "nandemu: nandemu_is_marked_bad called on invalid block: %d\n", blk);
-    abort();
-  }
+    {
+      fprintf(stderr, "nandemu: nandemu_is_marked_bad called on invalid block: %d\n", blk);
+      abort();
+    }
 
   return block_state_is_marked_bad(blk);
+}
+
+bool nandemu_is_not_bad_and_empty(block_id_t const blk)
+{
+  if (blk >= NUM_BLOCKS)
+    {
+      fprintf(stderr, "nandemu: nandemu_is_not_bad_and_empty called on invalid block: %d\n", blk);
+      abort();
+    }
+
+  if (!block_state_is_marked_bad(blk))
+    {
+      uint8_t * page = flash_.blocks->pages[0].page;
+      for (unsigned i = 0; i < PAGE_SIZE; ++i)
+        {
+          if (page[i] != 0xffU)
+            {
+              return false;
+            }
+        }
+
+      return true;
+    }
+
+  return false;
 }
 
 void nandemu_mark_bad(block_id_t blk)
 {
   if (blk >= NUM_BLOCKS)
-  {
-    fprintf(stderr, "nandemu: nandemu_mark_bad called on invalid block: %d\n", blk);
-    abort();
-  }
+    {
+      fprintf(stderr, "nandemu: nandemu_mark_bad called on invalid block: %d\n", blk);
+      abort();
+    }
 
   block_state_mark_bad(blk);
 }

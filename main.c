@@ -26,7 +26,7 @@ __attribute__((unused)) static void nand_erase_test(void)
          nandemu_is_erased_number(),
          nandemu_timebombed_number());
 
-  for (int run = 0; run < 256; run++)
+  for (int run = 0; run < 1024; run++)
     {
       for (block_id_t blk = 0; blk < NUM_BLOCKS; ++blk)
         {
@@ -79,11 +79,11 @@ static void membuf_shuffle_de_shuffle_test(void)
   membuf_reset();
   uint8_t * dest = membuf_current_position();
   size_t const copy_size = membuf_bytes_available();
-  uint8_t reference[copy_size];
+  uint8_t      reference[copy_size];
   fill_random_buffer(reference, copy_size);
   membuf_write_bytes(reference, copy_size);
   membuf_shuffle_buffer();
-  for(size_t i = 0; i < copy_size; ++i)
+  for (size_t i = 0; i < copy_size; ++i)
     {
       if (dest[i] == reference[i])
         {
@@ -91,15 +91,37 @@ static void membuf_shuffle_de_shuffle_test(void)
         }
     }
   membuf_shuffle_buffer();
-  for(size_t i = 0; i < copy_size; ++i)
+  for (size_t i     = 0; i < copy_size; ++i)
     {
       if (dest[i] != reference[i])
         {
           printf("Byte %d not de-shuffled: found 0x'%u', expected 0x'%u'\n", i, dest[i], reference[i]);
         }
     }
-uint64_t magic = FCB_MAGIC;
+  uint64_t    magic = FCB_MAGIC;
   (void) magic;
+}
+
+static void test_empty_block_iteration(void)
+{
+  nandemu_reset();
+
+  for (int i = 0; i < 100000; ++i)
+    {
+
+      block_id_t found = i % NUM_BLOCKS;
+
+      do
+        {
+          found = exp_find_empty_block(found);
+          if (found == 0xffffffffU)
+            {
+              break;
+            }
+        }
+      while (true);
+
+    }
 }
 
 int main()
@@ -110,7 +132,8 @@ int main()
 //  nand_erase_test();
 //  test_xorshift32();
 //  test_xorshift16();
-  membuf_shuffle_de_shuffle_test();
+//  membuf_shuffle_de_shuffle_test();
+  test_empty_block_iteration();
 
   return 0;
 }

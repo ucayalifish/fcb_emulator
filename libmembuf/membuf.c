@@ -66,9 +66,22 @@ ptrdiff_t membuf_write_bytes(uint8_t const * data, size_t const sz)
 {
   if (data && offset_ + sz >= BLOCK_SIZE)
     {
-      uint8_t * dest = (uint8_t *) buffer_ + sz;
+      uint8_t * dest = (uint8_t *) buffer_ + offset_;
       memcpy(dest, data, (ptrdiff_t) sz);
       offset_ += (ptrdiff_t) sz;
+      return offset_;
+    }
+
+  return -1;
+}
+
+ptrdiff_t membuf_read_bytes(uint8_t * dest, size_t how_many)
+{
+  if (offset_ + how_many >= BLOCK_SIZE)
+    {
+      uint8_t const * from = (uint8_t *) buffer_ + offset_;
+      memcpy(dest, from, how_many);
+      offset_ += (ptrdiff_t) how_many;
       return offset_;
     }
 
