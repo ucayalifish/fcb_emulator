@@ -199,12 +199,12 @@ void test_xorshift16(void)
 #endif
 }
 
-block_id_t exp_find_empty_block(block_id_t const start_from)
+block_id_t exp_find_good_block(block_id_t start_from)
 {
   block_id_t current = start_from;
   do
     {
-      if (nandemu_is_not_bad_and_empty(current))
+      if (!nandemu_is_marked_bad(current))
         {
           return current;
         }

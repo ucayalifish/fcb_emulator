@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>
 
 #include <nandemu.h>
 #include <membuf.h>
@@ -74,7 +73,7 @@ __attribute__((unused)) static void num_of_attempts_experiment(void)
   printf("Attempts before failure: max-'%d', min-'%d', mean-'%d'\n", max, min, mean);
 }
 
-static void membuf_shuffle_de_shuffle_test(void)
+__attribute__((unused)) static void membuf_shuffle_de_shuffle_test(void)
 {
   membuf_reset();
   uint8_t * dest = membuf_current_position();
@@ -102,25 +101,61 @@ static void membuf_shuffle_de_shuffle_test(void)
   (void) magic;
 }
 
-static void test_empty_block_iteration(void)
+__attribute__((unused)) static void test_format_nand(void)
 {
   nandemu_reset();
 
-  for (int i = 0; i < 100000; ++i)
+  for (block_id_t blk = 0; blk < NUM_BLOCKS; ++blk)
+    {
+      if (!nandemu_is_marked_bad(blk))
+        {
+          int r = nandemu_block_erase(blk);
+          char const * result = r == 0 ? "success" : "failure";
+          printf("<> Erasing block %d: %s, returned %d\n", blk, result, r);
+        }
+      else
+        {
+          printf("!!! Block %d is factory marked bad\n", blk);
+        }
+    }
+}
+
+__attribute__((unused)) static void test_empty_block_iteration(void)
+{
+  nandemu_reset();
+
+  for (block_id_t i = 0; i < 100000; ++i)
     {
 
-      block_id_t found = i % NUM_BLOCKS;
+      block_id_t found    = i % NUM_BLOCKS;
+      int        num_good = 0;
+      printf("Start search from %d\n", i);
 
+      found = exp_find_good_block(found);
+      if (found == i)
+        {
+          ++num_good;
+          found = (found + 1) % NUM_BLOCKS;
+        }
       do
         {
-          found = exp_find_empty_block(found);
-          if (found == 0xffffffffU)
+          found = exp_find_good_block(found);
+
+          if (found != 0xffffffffU)
+            {
+              ++num_good;
+            }
+
+          if (found == i || found == 0xffffffffU)
             {
               break;
             }
+
+          found = (found + 1) % NUM_BLOCKS;
         }
       while (true);
 
+      printf("\tfound %d good blocks\n", num_good);
     }
 }
 
@@ -133,6 +168,7 @@ int main()
 //  test_xorshift32();
 //  test_xorshift16();
 //  membuf_shuffle_de_shuffle_test();
+//  test_format_nand();
   test_empty_block_iteration();
 
   return 0;

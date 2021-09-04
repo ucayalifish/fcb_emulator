@@ -184,11 +184,11 @@ bool nandemu_is_marked_bad(block_id_t const blk)
   return block_state_is_marked_bad(blk);
 }
 
-bool nandemu_is_not_bad_and_empty(block_id_t const blk)
+bool nandemu_is_erased(block_id_t blk)
 {
   if (blk >= NUM_BLOCKS)
     {
-      fprintf(stderr, "nandemu: nandemu_is_not_bad_and_empty called on invalid block: %d\n", blk);
+      fprintf(stderr, "nandemu: nandemu_is_erased called on invalid block: %d\n", blk);
       abort();
     }
 
