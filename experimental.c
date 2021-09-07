@@ -199,19 +199,37 @@ void test_xorshift16(void)
 #endif
 }
 
-block_id_t exp_find_good_block(block_id_t start_from)
+block_id_t exp_find_empty_ready(block_id_t current, block_id_t const limit)
 {
-  block_id_t current = start_from;
-  do
+
+  while (current != limit)
     {
-      if (!nandemu_is_marked_bad(current))
+      if (nandemu_is_marked_bad(current))
+        {
+          current = (current + 1) % NUM_BLOCKS;
+          continue;
+        }
+
+      int r = nandemu_block_erase(current);
+
+      if (r == NANDEMU_E_NONE)
         {
           return current;
         }
 
+      while (r != NANDEMU_E_NONE)
+        {
+          if (r == NANDEMU_E_BAD_BLOCK)
+            {
+              nandemu_mark_bad(current);
+              continue;
+            }
+
+          r = nandemu_block_erase(current);
+        }
+
       current = (current + 1) % NUM_BLOCKS;
     }
-  while (current != start_from);
 
-  return 0xffffffffU;
+  return -1;
 }

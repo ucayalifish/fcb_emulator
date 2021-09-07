@@ -24,6 +24,6 @@ void test_xorshift32(void);
 
 void test_xorshift16(void);
 
-block_id_t exp_find_good_block(block_id_t start_from);
+block_id_t exp_find_empty_ready(block_id_t current, block_id_t limit);
 
 #endif //FCB_EMULATOR_EXPERIMENTAL_H

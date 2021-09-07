@@ -3,6 +3,7 @@
 
 #include <nandemu.h>
 #include <membuf.h>
+#include <string.h>
 #include "experimental.h"
 #include "utils.h"
 #include "libfcb/inc/fcb.h"
@@ -122,41 +123,65 @@ __attribute__((unused)) static void test_format_nand(void)
 
 __attribute__((unused)) static void test_empty_block_iteration(void)
 {
-  nandemu_reset();
+  static int16_t found_[NUM_BLOCKS];
 
-  for (block_id_t i = 0; i < 100000; ++i)
+  for (int i = 0; i < 10000; ++i)
     {
+      nandemu_reset();
 
-      block_id_t found    = i % NUM_BLOCKS;
-      int        num_good = 0;
-      printf("Start search from %d\n", i);
+      printf("NAND prepared, factory bad blocks: %d\n", nandemu_number_of_marked_bad());
 
-      found = exp_find_good_block(found);
-      if (found == i)
+      for (unsigned j = 0; j < NUM_BLOCKS; ++j)
         {
-          ++num_good;
-          found = (found + 1) % NUM_BLOCKS;
+          found_[j] = -1;
         }
+
+      block_id_t const first_protected = (i + rand()) % NUM_BLOCKS;
+      block_id_t const last_protected = (first_protected + (rand() % 7) + 1) % NUM_BLOCKS;
+      printf("Previously written data in blocks %d - %d\n", first_protected, last_protected);
+
+      block_id_t       to_check  = (last_protected + 1) % NUM_BLOCKS;
+
       do
         {
-          found = exp_find_good_block(found);
-
-          if (found != 0xffffffffU)
+          to_check = exp_find_empty_ready(to_check, first_protected);
+          if (to_check != 0xffffffffU)
             {
-              ++num_good;
+              found_[to_check] = 0;
+              to_check = (to_check + 1) % NUM_BLOCKS;
             }
-
-          if (found == i || found == 0xffffffffU)
-            {
-              break;
-            }
-
-          found = (found + 1) % NUM_BLOCKS;
         }
-      while (true);
+      while (to_check != 0xffffffffU);
 
-      printf("\tfound %d good blocks\n", num_good);
+      int count_good = 0;
+      int count_bad  = 0;
+
+      for (unsigned j = 0; j < NUM_BLOCKS; ++j)
+        {
+          if (found_[j] == -1)
+            {
+              ++count_bad;
+            }
+          else if (found_[j] == 0)
+            {
+              ++count_good;
+            }
+        }
+
+      printf("NAND after iteration, bad blocks: %d\n", nandemu_number_of_marked_bad());
+      printf("Iteration %d, protected blocks %d - %d: good-'%d', bad-'%d'\n\n", i, first_protected, last_protected, count_good, count_bad);
     }
+}
+
+static void test_first_write(void)
+{
+  nandemu_reset();
+
+  printf("NAND prepared, factory bad blocks: %d\n", nandemu_number_of_marked_bad());
+
+  block_id_t const found = exp_find_empty_ready(0, NUM_BLOCKS - 1);
+
+  printf("Found and erased blok %d, bad blocks %d\n", found, nandemu_number_of_marked_bad());
 }
 
 int main()
@@ -169,7 +194,8 @@ int main()
 //  test_xorshift16();
 //  membuf_shuffle_de_shuffle_test();
 //  test_format_nand();
-  test_empty_block_iteration();
+//  test_empty_block_iteration();
+  test_first_write();
 
   return 0;
 }
