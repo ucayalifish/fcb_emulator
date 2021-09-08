@@ -18,7 +18,7 @@
 
 #define MID_OF_DISTRIBUTION_ (0x7fffU * SCALING_FACTOR_)
 
-#define CUT_OFF_ (MID_OF_DISTRIBUTION_ * RESTORE_ODDS_NUMERATOR_ / RESTORE_ODDS_DENOMINATOR_);
+#define CUT_OFF_ (MID_OF_DISTRIBUTION_ * RESTORE_ODDS_NUMERATOR_ / RESTORE_ODDS_DENOMINATOR_)
 
 bool do_restore_test_generator(void)
 {
@@ -199,10 +199,23 @@ void test_xorshift16(void)
 #endif
 }
 
+static inline bool limit_not_reached_(block_id_t const current, block_id_t const limit)
+{
+#if 1
+  if (limit != NUM_BLOCKS)
+    {
+      return current != limit;
+    }
+
+  return current < NUM_BLOCKS;
+#else
+  return limit != NUM_BLOCKS ? current != limit : current < NUM_BLOCKS;
+#endif
+}
+
 block_id_t exp_find_empty_ready(block_id_t current, block_id_t const limit)
 {
-
-  while (current != limit)
+  while (limit != NUM_BLOCKS ? current != limit : current < NUM_BLOCKS)
     {
       if (nandemu_is_marked_bad(current))
         {
@@ -222,7 +235,7 @@ block_id_t exp_find_empty_ready(block_id_t current, block_id_t const limit)
           if (r == NANDEMU_E_BAD_BLOCK)
             {
               nandemu_mark_bad(current);
-              continue;
+              break;
             }
 
           r = nandemu_block_erase(current);

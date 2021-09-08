@@ -137,10 +137,10 @@ __attribute__((unused)) static void test_empty_block_iteration(void)
         }
 
       block_id_t const first_protected = (i + rand()) % NUM_BLOCKS;
-      block_id_t const last_protected = (first_protected + (rand() % 7) + 1) % NUM_BLOCKS;
+      block_id_t const last_protected  = (first_protected + (rand() % 7) + 1) % NUM_BLOCKS;
       printf("Previously written data in blocks %d - %d\n", first_protected, last_protected);
 
-      block_id_t       to_check  = (last_protected + 1) % NUM_BLOCKS;
+      block_id_t to_check = (last_protected + 1) % NUM_BLOCKS;
 
       do
         {
@@ -173,15 +173,38 @@ __attribute__((unused)) static void test_empty_block_iteration(void)
     }
 }
 
-static void test_first_write(void)
+__attribute__((unused)) static void test_first_write(void)
 {
   nandemu_reset();
 
   printf("NAND prepared, factory bad blocks: %d\n", nandemu_number_of_marked_bad());
 
-  block_id_t const found = exp_find_empty_ready(0, NUM_BLOCKS - 1);
+  block_id_t found = exp_find_empty_ready(0, NUM_BLOCKS);
 
-  printf("Found and erased blok %d, bad blocks %d\n", found, nandemu_number_of_marked_bad());
+  printf("Found and erased block %d, bad blocks %d\n", found, nandemu_number_of_marked_bad());
+
+  nandemu_reset();
+
+  for (block_id_t blk = 0; blk < NUM_BLOCKS - 1; ++blk)
+    {
+      if (!nandemu_is_marked_bad(blk))
+        {
+          nandemu_mark_bad(blk);
+        }
+    }
+
+  if (nandemu_is_marked_bad(4095))
+    {
+      printf("%s\n", "!!! the only block is bad!");
+      exit(-1);
+    }
+
+  printf("NAND prepared, factory bad blocks: %d\n", nandemu_number_of_marked_bad());
+
+  found = exp_find_empty_ready(0, NUM_BLOCKS);
+
+
+  printf("Found and erased block %d, bad blocks %d\n", found, nandemu_number_of_marked_bad());
 }
 
 int main()
