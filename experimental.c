@@ -246,3 +246,8 @@ block_id_t exp_find_empty_ready(block_id_t current, block_id_t const limit)
 
   return -1;
 }
+
+int exp_prog_block(block_id_t blk)
+{
+  return 0;
+}

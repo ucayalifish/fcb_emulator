@@ -79,20 +79,8 @@ void nandemu_reset(void)
   block_state_reset();
 }
 
-int nandemu_block_erase(block_id_t const blk)
+static int block_erase_impl_(block_id_t const blk)
 {
-  if (blk > NUM_BLOCKS)
-    {
-      fprintf(stderr, "nandemu: nandemu_block_erase called on invalid block: %d\n", blk);
-      abort();
-    }
-
-  if (block_state_is_marked_bad(blk))
-    {
-      fprintf(stderr, "nandemu: nandemu_block_erase called on block which is marked bad: %d\n", blk);
-      abort();
-    }
-
   block_state_timebomb_tick(blk);
 
   uint8_t * const block = flash_.blocks[blk].bytes;
@@ -111,6 +99,17 @@ int nandemu_block_erase(block_id_t const blk)
   return NANDEMU_E_NONE;
 }
 
+int nandemu_block_erase(block_id_t const blk)
+{
+  if (blk > NUM_BLOCKS)
+    {
+      fprintf(stderr, "nandemu: nandemu_block_erase called on invalid block: %d\n", blk);
+      abort();
+    }
+
+  return block_erase_impl_(blk);
+}
+
 int nandemu_block_prog(block_id_t const blk, uint8_t const * data)
 {
   if (blk >= NUM_BLOCKS)
@@ -125,20 +124,22 @@ int nandemu_block_prog(block_id_t const blk, uint8_t const * data)
       return NANDEMU_E_BAD_BLOCK;
     }
 
-  block_state_timebomb_tick(blk);
+  ptrdiff_t offset = 0;
 
-  uint8_t * dest = flash_.blocks[blk].bytes;
-
-  if (block_state_failed(blk))
+  for (page_id_t pg = 0; pg < PAGES_PER_BLOCK; ++pg)
     {
-      block_state_inc_prog_failed(blk);
-      seq_gen_(dest, BLOCK_SIZE);
-      return NANDEMU_E_ECC;
+      block_state_timebomb_tick(blk);
+      if (block_state_failed(blk))
+        {
+          block_state_inc_prog_failed(blk);
+          return block_state_fail_count_exhausted(blk) ? NANDEMU_E_BAD_BLOCK : NANDEMU_E_ECC;
+        }
+      uint8_t * dest = flash_.blocks[blk].pages[pg].page;
+      memcpy(dest + offset, data + offset, PAGE_SIZE);
+      offset += PAGE_SIZE;
     }
 
   block_state_inc_prog_success(blk);
-  memcpy(dest, data, BLOCK_SIZE);
-
   return NANDEMU_E_NONE;
 }
 
@@ -156,19 +157,24 @@ int nandemu_block_read(block_id_t blk, uint8_t * dest)
       return NANDEMU_E_BAD_BLOCK;
     }
 
-  block_state_timebomb_tick(blk);
+  ptrdiff_t offset = 0;
 
-  uint8_t * src = flash_.blocks[blk].bytes;
-
-  if (block_state_failed(blk))
+  for (page_id_t pg = 0; pg < PAGES_PER_BLOCK; ++pg)
     {
-      block_state_inc_read_failed(blk);
-      seq_gen_(dest, PAGE_SIZE);
-      return NANDEMU_E_ECC;
+      block_state_timebomb_tick(blk);
+      if (block_state_failed(blk))
+        {
+          block_state_inc_read_failed(blk);
+          return block_state_fail_count_exhausted(blk) ? NANDEMU_E_BAD_BLOCK : NANDEMU_E_ECC;
+        }
+
+      dest += offset;
+      uint8_t const * src = flash_.blocks[blk].pages[pg].page + offset;
+      memcpy(dest, src, PAGE_SIZE);
+      offset += PAGE_SIZE;
     }
 
   block_state_inc_read_success(blk);
-  memcpy(dest, src, BLOCK_SIZE);
 
   return NANDEMU_E_NONE;
 }
@@ -218,4 +224,38 @@ void nandemu_mark_bad(block_id_t blk)
     }
 
   block_state_mark_bad(blk);
+}
+
+block_id_t nandemu_find_and_erase_next_block(block_id_t to_check, block_id_t const limit)
+{
+  while (to_check != limit)
+    {
+      if (block_state_is_marked_bad(to_check))
+        {
+          to_check = (to_check + 1) % NUM_BLOCKS;
+          continue;
+        }
+
+      int r = block_erase_impl_(to_check);
+
+      if (r == NANDEMU_E_NONE)
+        {
+          return to_check;
+        }
+
+      while (r != NANDEMU_E_NONE)
+        {
+          if (r == NANDEMU_E_BAD_BLOCK)
+            {
+              block_state_mark_bad(to_check);
+              continue;
+            }
+
+          r = block_erase_impl_(to_check);
+        }
+
+      to_check = (to_check + 1) % NUM_BLOCKS;
+    }
+
+  return -1;
 }

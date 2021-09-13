@@ -23,4 +23,5 @@ target_compile_options(membuf PRIVATE
         "-g3"
         "-Wall"
         "-Wextra"
+        "-Wno-unknown-pragmas"
         )

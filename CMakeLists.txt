@@ -20,4 +20,5 @@ target_compile_options(fcb_emulator PRIVATE
         "-g3"
         "-Wall"
         "-Wextra"
+        "-Wno-unknown-pragmas"
         )

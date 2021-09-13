@@ -121,6 +121,8 @@ __attribute__((unused)) static void test_format_nand(void)
     }
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cert-msc50-cpp"
 __attribute__((unused)) static void test_empty_block_iteration(void)
 {
   static int16_t found_[NUM_BLOCKS];
@@ -144,7 +146,7 @@ __attribute__((unused)) static void test_empty_block_iteration(void)
 
       do
         {
-          to_check = exp_find_empty_ready(to_check, first_protected);
+          to_check = nandemu_find_and_erase_next_block(to_check, first_protected);
           if (to_check != 0xffffffffU)
             {
               found_[to_check] = 0;
@@ -172,6 +174,7 @@ __attribute__((unused)) static void test_empty_block_iteration(void)
       printf("Iteration %d, protected blocks %d - %d: good-'%d', bad-'%d'\n\n", i, first_protected, last_protected, count_good, count_bad);
     }
 }
+#pragma clang diagnostic pop
 
 __attribute__((unused)) static void test_first_write(void)
 {
@@ -218,7 +221,7 @@ int main()
 //  membuf_shuffle_de_shuffle_test();
 //  test_format_nand();
 //  test_empty_block_iteration();
-  test_first_write();
+//  test_first_write();
 
   return 0;
 }

@@ -27,4 +27,6 @@ int nandemu_timebombed_number(void);
 
 bool nandemu_is_not_bad_and_erased(block_id_t blk);
 
+block_id_t nandemu_find_and_erase_next_block(block_id_t to_check, block_id_t limit);
+
 #endif //FCB_EMULATOR_NANDEMU_H
