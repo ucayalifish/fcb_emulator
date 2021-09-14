@@ -8,7 +8,7 @@ set(LIB_HEADERS
 
 set(LIB_SOURCES
         src/utils.c
-        )
+        src/fcb.c)
 
 add_library(fcb STATIC
         ${LIB_SOURCES}

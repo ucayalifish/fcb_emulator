@@ -20,4 +20,6 @@ ptrdiff_t membuf_read_bytes(uint8_t * dest, size_t how_many);
 
 void membuf_shuffle_buffer(void);
 
+uint32_t membuf_calc_crc32(ptrdiff_t from, ptrdiff_t to);
+
 #endif //FCB_EMULATOR_MEMBUF_H

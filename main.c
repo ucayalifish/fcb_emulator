@@ -4,9 +4,11 @@
 #include <nandemu.h>
 #include <membuf.h>
 #include <string.h>
+#include <assert.h>
 #include "experimental.h"
 #include "utils.h"
 #include "libfcb/inc/fcb.h"
+#include "tables.h"
 
 __attribute__((unused)) static void nand_init_test(void)
 {
@@ -123,6 +125,7 @@ __attribute__((unused)) static void test_format_nand(void)
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "cert-msc50-cpp"
+
 __attribute__((unused)) static void test_empty_block_iteration(void)
 {
   static int16_t found_[NUM_BLOCKS];
@@ -174,6 +177,7 @@ __attribute__((unused)) static void test_empty_block_iteration(void)
       printf("Iteration %d, protected blocks %d - %d: good-'%d', bad-'%d'\n\n", i, first_protected, last_protected, count_good, count_bad);
     }
 }
+
 #pragma clang diagnostic pop
 
 __attribute__((unused)) static void test_first_write(void)
@@ -210,6 +214,51 @@ __attribute__((unused)) static void test_first_write(void)
   printf("Found and erased block %d, bad blocks %d\n", found, nandemu_number_of_marked_bad());
 }
 
+__attribute__((unused)) static void test_create_block(void)
+{
+  membuf_reset();
+  struct fcb_block_header_s block_header = {.ordinal = 0};
+  fcb_init_block_header(&block_header);
+  char out_magic[9];
+  memset(out_magic, 0, sizeof out_magic);
+  memcpy(out_magic, &block_header.magic, sizeof block_header.magic);
+  printf("Block header: magic='%s', ts='0x%I64u', corrected ts: '0x%I64u'\n",
+         out_magic,
+         block_header.ts_marker,
+         block_header.ts_marker >> 7u);
+  time_t tmp_time = (time_t) (block_header.ts_marker >> 7u);
+  char   tmp_buf[26];
+  struct tm * tm_info = localtime(&tmp_time);
+  strftime(tmp_buf, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+  printf("Corrected ts: '%s'\n", tmp_buf);
+
+  ptrdiff_t current = membuf_skip_bytes(sizeof(struct fcb_block_header_s));
+  block_header.data_offset = current;
+  printf("Block start data offset: %d\n", current);
+
+  struct fcb_table_header_s th        = {.magic=TBL_MAGIC, .record_size=SINGLE_RECORD_TABLE_SIZE, .num_records=1, .first_record_id=0};
+  ptrdiff_t const           crc_start = current;
+  current = membuf_write_bytes((uint8_t const *) &th, sizeof th);
+  uint8_t const * ptbl = generate_single_table();
+  current = membuf_write_bytes(ptbl, SINGLE_RECORD_TABLE_SIZE);
+  size_t       avail      = membuf_bytes_available();
+  size_t const num_of_rec = (avail - sizeof th) / BIG_1_RECORD_SIZE;
+  size_t const slop       = (avail - sizeof th) % BIG_1_RECORD_SIZE;
+  assert(num_of_rec * BIG_1_RECORD_SIZE + slop + sizeof th == avail);
+  th      = (struct fcb_table_header_s) {.magic=TBL_MAGIC, .record_size= BIG_1_RECORD_SIZE, .num_records=num_of_rec, .first_record_id=0};
+  current = membuf_write_bytes((uint8_t const *) &th, sizeof th);
+  ptbl    = generate_big_one();
+  current = membuf_write_bytes(ptbl, num_of_rec * BIG_1_RECORD_SIZE);
+  block_header.crc32 = membuf_calc_crc32(crc_start, current);
+  membuf_rewind(0);
+  (void) membuf_write_bytes((uint8_t const *) &block_header, sizeof block_header);
+  membuf_shuffle_buffer();
+
+  membuf_shuffle_buffer();
+  uint32_t crc = membuf_calc_crc32(crc_start, current);
+  assert(block_header.crc32 == crc);
+}
+
 int main()
 {
 //  do_restore_experiment();
@@ -222,6 +271,7 @@ int main()
 //  test_format_nand();
 //  test_empty_block_iteration();
 //  test_first_write();
+  test_create_block();
 
   return 0;
 }

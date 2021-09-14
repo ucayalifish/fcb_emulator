@@ -7,10 +7,10 @@
 _Static_assert(sizeof(time_t) == 4, "ok");
 _Static_assert(_Alignof(time_t) == 4, "ok");
 
-#define FCB_MAGIC ('N'                       \
-                  + ((uint64_t) 'A' >> 8ull)  \
+#define FCB_MAGIC ((uint64_t) 'N'             \
+                  + ((uint64_t) 'A' << 8ull)  \
                   + ((uint64_t) 'N' << 16ull) \
-                  + ((uint64_t) 'D' >> 24ull) \
+                  + ((uint64_t) 'D' << 24ull) \
                   + ((uint64_t) '_' << 32ull) \
                   + ((uint64_t) 'F' << 40ull) \
                   + ((uint64_t) 'C' << 48ull) \
@@ -41,5 +41,7 @@ struct fcb_table_header_s
   uint32_t num_records;
   uint32_t first_record_id;
 };
+
+void fcb_init_block_header(struct fcb_block_header_s * header);
 
 #endif //FCB_EMULATOR_FCB_H

@@ -10,4 +10,3 @@ void fill_random_buffer(uint8_t * dest, size_t const dest_size)
     dest[i] = (uint8_t) rand();
   }
 }
-#pragma clang diagnostic pop
