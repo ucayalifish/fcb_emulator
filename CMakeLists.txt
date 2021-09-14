@@ -12,7 +12,9 @@ add_subdirectory("libfcb")
 add_executable(fcb_emulator
         main.c
         utils.c
-        experimental.c libfcb/inc/fcb.h libfcb/src/utils.c libfcb/src/utils.h)
+        experimental.c
+        tables.c
+        libfcb/inc/fcb.h libfcb/src/utils.c libfcb/src/utils.h)
 
 target_link_libraries(fcb_emulator PUBLIC nandemu membuf fcb)
 
