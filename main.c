@@ -222,10 +222,19 @@ __attribute__((unused)) static void test_create_block(void)
   char out_magic[9];
   memset(out_magic, 0, sizeof out_magic);
   memcpy(out_magic, &block_header.magic, sizeof block_header.magic);
+#ifdef __GNUC__
+#ifdef __MINGW32__
   printf("Block header: magic='%s', ts='0x%I64u', corrected ts: '0x%I64u'\n",
          out_magic,
          block_header.ts_marker,
          block_header.ts_marker >> 7u);
+#else
+  printf("Block header: magic='%s', ts='0x%llu', corrected ts: '0x%llu'\n",
+         out_magic,
+         block_header.ts_marker,
+         block_header.ts_marker >> 7u);
+#endif
+#endif
   time_t tmp_time = (time_t) (block_header.ts_marker >> 7u);
   char   tmp_buf[26];
   struct tm * tm_info = localtime(&tmp_time);

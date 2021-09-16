@@ -1,6 +1,7 @@
 #ifndef FCB_EMULATOR_FCB_H
 #define FCB_EMULATOR_FCB_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <time.h>
 
@@ -25,8 +26,8 @@ struct fcb_block_header_s
   uint16_t ordinal; // number of block in con
 };
 
-_Static_assert(sizeof(struct fcb_block_header_s) == 32, "size with slop");
-_Static_assert(sizeof(struct fcb_block_header_s) - 2 * sizeof(uint64_t) - 2 * sizeof(uint32_t) - sizeof(uint16_t) == 6, "traling slop");
+_Static_assert(sizeof(struct fcb_block_header_s) == 28, "size with slop");
+_Static_assert(sizeof(struct fcb_block_header_s) - 2 * sizeof(uint64_t) - 2 * sizeof(uint32_t) - sizeof(uint16_t) == 2, "trailing slop");
 _Static_assert(offsetof(struct fcb_block_header_s, ordinal) + sizeof(uint16_t) == 26, "size without trailing slop");
 
 #define TBL_MAGIC ('T'                      \
