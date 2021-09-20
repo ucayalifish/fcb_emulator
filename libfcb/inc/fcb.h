@@ -26,8 +26,16 @@ struct fcb_block_header_s
   uint16_t ordinal; // number of block in con
 };
 
+#ifdef __GNUC__
+#ifdef __MINGW32__
+_Static_assert(sizeof(struct fcb_block_header_s) == 32, "size with slop");
+_Static_assert(sizeof(struct fcb_block_header_s) - offsetof(struct fcb_block_header_s, ordinal) == 8, "trailing slop 1");
+_Static_assert(sizeof(struct fcb_block_header_s) - 2 * sizeof(uint64_t) - 2 * sizeof(uint32_t) - sizeof(uint16_t) == 6, "trailing slop 2");
+#else
 _Static_assert(sizeof(struct fcb_block_header_s) == 28, "size with slop");
 _Static_assert(sizeof(struct fcb_block_header_s) - 2 * sizeof(uint64_t) - 2 * sizeof(uint32_t) - sizeof(uint16_t) == 2, "trailing slop");
+#endif
+#endif
 _Static_assert(offsetof(struct fcb_block_header_s, ordinal) + sizeof(uint16_t) == 26, "size without trailing slop");
 
 #define TBL_MAGIC ('T'                      \

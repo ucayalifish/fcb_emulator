@@ -219,7 +219,7 @@ __attribute__((unused)) static void test_create_block(void)
   membuf_reset();
   struct fcb_block_header_s block_header = {.ordinal = 0};
   fcb_init_block_header(&block_header);
-  char out_magic[9];
+  char out_magic[sizeof(uint64_t) + 1];
   memset(out_magic, 0, sizeof out_magic);
   memcpy(out_magic, &block_header.magic, sizeof block_header.magic);
 #ifdef __GNUC__
