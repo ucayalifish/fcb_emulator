@@ -224,7 +224,7 @@ __attribute__((unused)) static void test_create_block(void)
   memcpy(out_magic, &block_header.magic, sizeof block_header.magic);
 #ifdef __GNUC__
 #ifdef __MINGW32__
-  printf("Block header: magic='%s', ts='0x%I64u', corrected ts: '0x%I64u'\n",
+  printf("Block header: magic='%s', ts='0x%I64u', raw ts: '0x%I64u'\n",
          out_magic,
          block_header.ts_marker,
          block_header.ts_marker >> 7u);
@@ -241,7 +241,7 @@ __attribute__((unused)) static void test_create_block(void)
   strftime(tmp_buf, 26, "%Y-%m-%d %H:%M:%S", tm_info);
   printf("Corrected ts: '%s'\n", tmp_buf);
 
-  ptrdiff_t current = membuf_skip_bytes(sizeof(struct fcb_block_header_s));
+  ptrdiff_t current = membuf_skip_bytes(BLOCK_HEADER_WIRE_SIZE);
   block_header.data_offset = current;
   printf("Block start data offset: %d\n", current);
 
@@ -268,6 +268,11 @@ __attribute__((unused)) static void test_create_block(void)
   assert(block_header.crc32 == crc);
 }
 
+static void test_save_two_tables(void)
+{
+
+}
+
 int main()
 {
 //  do_restore_experiment();
@@ -281,6 +286,7 @@ int main()
 //  test_empty_block_iteration();
 //  test_first_write();
   test_create_block();
+  test_save_two_tables();
 
   return 0;
 }

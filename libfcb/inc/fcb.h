@@ -20,7 +20,7 @@ _Static_assert(_Alignof(time_t) == 4, "ok");
 struct fcb_block_header_s
 {
   uint64_t magic;
-  uint64_t ts_marker; // Identification of new consecutive sequence of blocks, actually a timestamp pf first block creation
+  uint64_t ts_marker; // It serves as ID of new block sequence, i.e., a full hibernation data
   uint32_t crc32;
   uint32_t data_offset; // offset of first table in bytes from start of block
   uint16_t ordinal; // number of block in con
@@ -36,7 +36,10 @@ _Static_assert(sizeof(struct fcb_block_header_s) == 28, "size with slop");
 _Static_assert(sizeof(struct fcb_block_header_s) - 2 * sizeof(uint64_t) - 2 * sizeof(uint32_t) - sizeof(uint16_t) == 2, "trailing slop");
 #endif
 #endif
+
 _Static_assert(offsetof(struct fcb_block_header_s, ordinal) + sizeof(uint16_t) == 26, "size without trailing slop");
+
+#define BLOCK_HEADER_WIRE_SIZE (2 * sizeof(uint64_t) + 2 * sizeof(uint32_t) + sizeof(uint16_t))
 
 #define TBL_MAGIC ('T'                      \
                   + ((uint32_t) 'A' << 8U)  \

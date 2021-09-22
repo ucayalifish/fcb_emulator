@@ -106,7 +106,9 @@ static uint32_t crc32_nand_(uint8_t const * block, size_t const len, uint32_t c)
   size_t i;
 
   for (i = 0; i < len; i++)
-    c = (c >> 8) ^ reduce[(c ^ block[i]) & 0xff] ^ 0xff000000;
+    {
+      c = (c >> 8) ^ reduce[(c ^ block[i]) & 0xff] ^ 0xff000000;
+    }
 
   return c;
 }
@@ -119,7 +121,7 @@ void membuf_reset(void)
 
 size_t membuf_bytes_available(void)
 {
-  return BLOCK_SIZE - offset_;
+  return (BLOCK_SIZE - offset_) * sizeof(uint16_t);
 }
 
 uint8_t * membuf_current_position(void)
@@ -127,12 +129,20 @@ uint8_t * membuf_current_position(void)
   return (uint8_t *) buffer_ + offset_;
 }
 
-ptrdiff_t membuf_skip_bytes(size_t const how_many)
+ptrdiff_t membuf_skip_bytes(size_t const how_many_bytes)
 {
-  if (offset_ + how_many < BLOCK_SIZE)
+  size_t const byte_offset = offset_ * sizeof(uint16_t);
+
+  if (byte_offset + how_many_bytes < BLOCK_SIZE)
     {
-      offset_ += (ptrdiff_t) how_many;
-      return offset_;
+      ptrdiff_t to_skip = (ptrdiff_t) (how_many_bytes / sizeof(uint16_t));
+      if ((how_many_bytes & 1) != 0)
+        {
+          to_skip += 1;
+        }
+      offset_ += to_skip;
+
+      return (ptrdiff_t) (offset_ * sizeof(uint16_t));
     }
 
   return -1;
@@ -141,10 +151,11 @@ ptrdiff_t membuf_skip_bytes(size_t const how_many)
 ptrdiff_t membuf_rewind(ptrdiff_t const to)
 {
   assert(to >= 0);
+  assert((to & 1) == 0);
 
   if (offset_ >= to)
     {
-      offset_ = to;
+      offset_ = (ptrdiff_t) (to / sizeof(uint32_t));
       return offset_;
     }
 
@@ -153,11 +164,19 @@ ptrdiff_t membuf_rewind(ptrdiff_t const to)
 
 ptrdiff_t membuf_write_bytes(uint8_t const * data, size_t const sz)
 {
-  if (data && offset_ + sz < BLOCK_SIZE)
+  size_t const byte_offset = offset_ * sizeof(uint16_t);
+
+  if (data && byte_offset + sz < BLOCK_SIZE)
     {
-      uint8_t * dest = (uint8_t *) buffer_ + offset_;
+      uint8_t * dest = (uint8_t *) (buffer_ + offset_);
       memcpy(dest, data, (ptrdiff_t) sz);
-      offset_ += (ptrdiff_t) sz;
+      ptrdiff_t to_add = (ptrdiff_t) (sz / sizeof(uint16_t));
+      if ((sz & 1) != 0)
+        {
+          to_add += 1;
+        }
+      offset_ += to_add;
+
       return offset_;
     }
 
@@ -166,11 +185,19 @@ ptrdiff_t membuf_write_bytes(uint8_t const * data, size_t const sz)
 
 ptrdiff_t membuf_read_bytes(uint8_t * dest, size_t how_many)
 {
-  if (offset_ + how_many >= BLOCK_SIZE)
+  size_t const byte_offset = offset_ * sizeof(uint16_t);
+
+  if (byte_offset + how_many >= BLOCK_SIZE)
     {
-      uint8_t const * from = (uint8_t *) buffer_ + offset_;
+      uint8_t const * from = (uint8_t *) (buffer_ + offset_);
       memcpy(dest, from, how_many);
-      offset_ += (ptrdiff_t) how_many;
+      ptrdiff_t to_add = (ptrdiff_t) (how_many / sizeof(uint16_t));
+      if ((how_many & 1) != 0)
+        {
+          to_add += 1;
+        }
+      offset_ += to_add;
+
       return offset_;
     }
 
@@ -190,7 +217,10 @@ void membuf_shuffle_buffer(void)
 
 uint32_t membuf_calc_crc32(ptrdiff_t const from, ptrdiff_t const to)
 {
-  uint8_t const * pstart = (uint8_t const *) buffer_ + from;
+  assert((from & 1) == 0);
+  assert((to & 1) == 0);
+
+  uint8_t const * pstart = (uint8_t const *) (buffer_ + from);
   size_t const how_many = to - from;
   return crc32_nand_(pstart, how_many, CRC32_INIT);
 }

@@ -10,7 +10,7 @@ size_t membuf_bytes_available(void);
 
 uint8_t * membuf_current_position(void);
 
-ptrdiff_t membuf_skip_bytes(size_t how_many);
+ptrdiff_t membuf_skip_bytes(size_t how_many_bytes);
 
 ptrdiff_t membuf_rewind(ptrdiff_t to);
 
