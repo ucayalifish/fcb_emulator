@@ -49,10 +49,15 @@ _Static_assert(offsetof(struct fcb_block_header_s, ordinal) + sizeof(uint16_t) =
 struct fcb_table_header_s
 {
   uint32_t magic;
-  uint32_t record_size;
-  uint32_t num_records;
-  uint32_t first_record_id;
+  uint16_t table_id;
+  uint16_t record_size;
+  uint16_t num_records;
+  uint16_t first_record_id;
 };
+
+_Static_assert(sizeof(struct fcb_table_header_s) == 12, "total size");
+_Static_assert(offsetof(struct fcb_table_header_s, table_id) == sizeof(uint32_t), "no inner slop");
+_Static_assert(sizeof(struct fcb_table_header_s) - offsetof(struct fcb_table_header_s, first_record_id) == sizeof(uint16_t), "no trailing slop");
 
 void fcb_init_block_header(struct fcb_block_header_s * header);
 

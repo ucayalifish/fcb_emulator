@@ -104,6 +104,16 @@ __attribute__((unused)) static void membuf_shuffle_de_shuffle_test(void)
   (void) magic;
 }
 
+__attribute__((unused)) static void test_membuf_manipulation(void)
+{
+  membuf_reset();
+  size_t    to_skip = 37;
+  ptrdiff_t current = membuf_skip_bytes(to_skip);
+  assert(current == 38);
+  current = membuf_rewind(16);
+  assert(current == 16);
+}
+
 __attribute__((unused)) static void test_format_nand(void)
 {
   nandemu_reset();
@@ -174,7 +184,12 @@ __attribute__((unused)) static void test_empty_block_iteration(void)
         }
 
       printf("NAND after iteration, bad blocks: %d\n", nandemu_number_of_marked_bad());
-      printf("Iteration %d, protected blocks %d - %d: good-'%d', bad-'%d'\n\n", i, first_protected, last_protected, count_good, count_bad);
+      printf("Iteration %d, protected blocks %d - %d: good-'%d', bad-'%d'\n\n",
+             i,
+             first_protected,
+             last_protected,
+             count_good,
+             count_bad);
     }
 }
 
@@ -241,11 +256,19 @@ __attribute__((unused)) static void test_create_block(void)
   strftime(tmp_buf, 26, "%Y-%m-%d %H:%M:%S", tm_info);
   printf("Corrected ts: '%s'\n", tmp_buf);
 
+  // reserve space for block header
   ptrdiff_t current = membuf_skip_bytes(BLOCK_HEADER_WIRE_SIZE);
   block_header.data_offset = current;
   printf("Block start data offset: %d\n", current);
 
-  struct fcb_table_header_s th        = {.magic=TBL_MAGIC, .record_size=SINGLE_RECORD_TABLE_SIZE, .num_records=1, .first_record_id=0};
+  struct fcb_table_header_s th        =
+                              {
+                                .magic = TBL_MAGIC,
+                                .table_id = SINGLE_RECORD_TABLE_ID,
+                                .record_size=SINGLE_RECORD_TABLE_SIZE,
+                                .num_records=1,
+                                .first_record_id=0
+                              };
   ptrdiff_t const           crc_start = current;
   current = membuf_write_bytes((uint8_t const *) &th, sizeof th);
   uint8_t const * ptbl = generate_single_table();
@@ -254,13 +277,20 @@ __attribute__((unused)) static void test_create_block(void)
   size_t const num_of_rec = (avail - sizeof th) / BIG_1_RECORD_SIZE;
   size_t const slop       = (avail - sizeof th) % BIG_1_RECORD_SIZE;
   assert(num_of_rec * BIG_1_RECORD_SIZE + slop + sizeof th == avail);
-  th      = (struct fcb_table_header_s) {.magic=TBL_MAGIC, .record_size= BIG_1_RECORD_SIZE, .num_records=num_of_rec, .first_record_id=0};
+  th      = (struct fcb_table_header_s)
+    {
+      .magic = TBL_MAGIC,
+      .table_id = BIG_1_TABLE_ID,
+      .record_size= BIG_1_RECORD_SIZE,
+      .num_records=num_of_rec,
+      .first_record_id=0
+    };
   current = membuf_write_bytes((uint8_t const *) &th, sizeof th);
   ptbl    = generate_big_one();
   current = membuf_write_bytes(ptbl, num_of_rec * BIG_1_RECORD_SIZE);
   block_header.crc32 = membuf_calc_crc32(crc_start, current);
   membuf_rewind(0);
-  (void) membuf_write_bytes((uint8_t const *) &block_header, sizeof block_header);
+  (void) membuf_write_bytes((uint8_t const *) &block_header, BLOCK_HEADER_WIRE_SIZE);
   membuf_shuffle_buffer();
 
   membuf_shuffle_buffer();
@@ -282,6 +312,7 @@ int main()
 //  test_xorshift32();
 //  test_xorshift16();
 //  membuf_shuffle_de_shuffle_test();
+//  test_membuf_manipulation();
 //  test_format_nand();
 //  test_empty_block_iteration();
 //  test_first_write();

@@ -5,21 +5,23 @@
 
 _Static_assert(BLOCK_SIZE % 2 == 0, "OK");
 
-#define BUFFER_SIZE_ (BLOCK_SIZE / sizeof(uint16_t))
+typedef uint16_t buffer_item_t;
+
+#define BUFFER_SIZE_ (BLOCK_SIZE / sizeof(buffer_item_t))
 
 // Buffer is optimized for external SDRAM with 16-bit access.
-static uint16_t buffer_[BUFFER_SIZE_];
+static buffer_item_t buffer_[BUFFER_SIZE_];
 
 static ptrdiff_t offset_;
 
 // Xorshift LFSR implementation from https://stackoverflow.com/a/65668437
-static uint16_t xorshift16_(uint32_t in)
+static buffer_item_t xorshift16_(uint32_t in)
 {
   in |= in == 0;
   in ^= (in & 0x07ffU) << 5U;
   in ^= in >> 7U;
   in ^= (in & 0x0003U) << 14U;
-  return (uint16_t) in & 0xffffU;
+  return (buffer_item_t) in & 0xffffU;
 }
 
 /**
@@ -34,7 +36,7 @@ static uint16_t xorshift16_(uint32_t in)
 
 #define CRC32_INIT ((uint32_t) 0xffffffffU)
 
-static uint32_t const reduce[256] = {
+static uint32_t const reduce_[256] = {
   0x00000000, 0x77073096, 0xee0e612c, 0x990951ba,
   0x076dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
   0x0edb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988,
@@ -107,7 +109,7 @@ static uint32_t crc32_nand_(uint8_t const * block, size_t const len, uint32_t c)
 
   for (i = 0; i < len; i++)
     {
-      c = (c >> 8) ^ reduce[(c ^ block[i]) & 0xff] ^ 0xff000000;
+      c = (c >> 8) ^ reduce_[(c ^ block[i]) & 0xff] ^ 0xff000000;
     }
 
   return c;
@@ -121,28 +123,29 @@ void membuf_reset(void)
 
 size_t membuf_bytes_available(void)
 {
-  return (BLOCK_SIZE - offset_) * sizeof(uint16_t);
+  return (BUFFER_SIZE_ - offset_) * sizeof(buffer_item_t);
 }
 
 uint8_t * membuf_current_position(void)
 {
-  return (uint8_t *) buffer_ + offset_;
+  return (uint8_t *) buffer_ + offset_ * sizeof(uint16_t);
 }
 
 ptrdiff_t membuf_skip_bytes(size_t const how_many_bytes)
 {
-  size_t const byte_offset = offset_ * sizeof(uint16_t);
+  size_t const byte_offset = offset_ * sizeof(buffer_item_t);
 
   if (byte_offset + how_many_bytes < BLOCK_SIZE)
     {
-      ptrdiff_t to_skip = (ptrdiff_t) (how_many_bytes / sizeof(uint16_t));
+      ptrdiff_t to_skip = (ptrdiff_t) (how_many_bytes / sizeof(buffer_item_t));
       if ((how_many_bytes & 1) != 0)
         {
-          to_skip += 1;
+          to_skip += 1; // reserve trailing byte of uint16_t for odd how_many_bytes
         }
+
       offset_ += to_skip;
 
-      return (ptrdiff_t) (offset_ * sizeof(uint16_t));
+      return (ptrdiff_t) (offset_ * sizeof(buffer_item_t));
     }
 
   return -1;
@@ -153,10 +156,13 @@ ptrdiff_t membuf_rewind(ptrdiff_t const to)
   assert(to >= 0);
   assert((to & 1) == 0);
 
-  if (offset_ >= to)
+  ptrdiff_t const current_byte_offset = (ptrdiff_t) (offset_ * sizeof(buffer_item_t));
+
+  if (current_byte_offset >= to)
     {
-      offset_ = (ptrdiff_t) (to / sizeof(uint32_t));
-      return offset_;
+
+      offset_ = (ptrdiff_t) (to / sizeof(buffer_item_t));
+      return (ptrdiff_t) (offset_ * sizeof(buffer_item_t));
     }
 
   return -1;
@@ -164,20 +170,23 @@ ptrdiff_t membuf_rewind(ptrdiff_t const to)
 
 ptrdiff_t membuf_write_bytes(uint8_t const * data, size_t const sz)
 {
-  size_t const byte_offset = offset_ * sizeof(uint16_t);
+  assert(sz > 0);
+  assert(data != NULL);
 
-  if (data && byte_offset + sz < BLOCK_SIZE)
+  size_t const byte_offset = offset_ * sizeof(buffer_item_t);
+
+  if (byte_offset + sz < BLOCK_SIZE)
     {
       uint8_t * dest = (uint8_t *) (buffer_ + offset_);
       memcpy(dest, data, (ptrdiff_t) sz);
-      ptrdiff_t to_add = (ptrdiff_t) (sz / sizeof(uint16_t));
+      ptrdiff_t to_add = (ptrdiff_t) (sz / sizeof(buffer_item_t));
       if ((sz & 1) != 0)
         {
           to_add += 1;
         }
       offset_ += to_add;
 
-      return offset_;
+      return (ptrdiff_t) (offset_ * sizeof(buffer_item_t));
     }
 
   return -1;
@@ -198,7 +207,7 @@ ptrdiff_t membuf_read_bytes(uint8_t * dest, size_t how_many)
         }
       offset_ += to_add;
 
-      return offset_;
+      return (ptrdiff_t) (offset_ * sizeof(buffer_item_t));
     }
 
   return -1;
@@ -220,7 +229,7 @@ uint32_t membuf_calc_crc32(ptrdiff_t const from, ptrdiff_t const to)
   assert((from & 1) == 0);
   assert((to & 1) == 0);
 
-  uint8_t const * pstart = (uint8_t const *) (buffer_ + from);
+  uint8_t const * pstart = (uint8_t const *) (buffer_ + from / sizeof(buffer_item_t));
   size_t const how_many = to - from;
   return crc32_nand_(pstart, how_many, CRC32_INIT);
 }
