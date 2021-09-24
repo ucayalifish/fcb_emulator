@@ -128,7 +128,7 @@ size_t membuf_bytes_available(void)
 
 uint8_t * membuf_current_position(void)
 {
-  return (uint8_t *) buffer_ + offset_ * sizeof(uint16_t);
+  return (uint8_t *) (buffer_ + offset_);
 }
 
 ptrdiff_t membuf_skip_bytes(size_t const how_many_bytes)

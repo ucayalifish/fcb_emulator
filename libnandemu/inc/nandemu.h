@@ -5,6 +5,11 @@
 
 #include "nandemudef.h"
 
+static inline block_id_t nandemu_next_block_id(block_id_t const blk)
+{
+  return (blk + 1) % NUM_BLOCKS;
+}
+
 void nandemu_reset(void);
 
 int nandemu_block_erase(block_id_t blk);

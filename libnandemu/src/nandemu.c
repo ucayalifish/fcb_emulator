@@ -237,6 +237,11 @@ block_id_t nandemu_find_and_erase_next_block(block_id_t to_check, block_id_t con
           continue;
         }
 
+      if (block_state_is_erased(to_check))
+        {
+          return to_check;
+        }
+
       int r = block_erase_impl_(to_check);
 
       if (r == NANDEMU_E_NONE)

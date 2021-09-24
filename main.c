@@ -300,7 +300,69 @@ __attribute__((unused)) static void test_create_block(void)
 
 static void test_save_two_tables(void)
 {
+  test_format_nand();
 
+  // preparing first block
+  membuf_reset();
+  uint16_t                  block_ordinal = 0;
+  struct fcb_block_header_s block_header  = {.ordinal = block_ordinal};
+  fcb_init_block_header(&block_header);
+  uint64_t const hibernation_session_id = block_header.ts_marker;
+  ptrdiff_t      write_pos              = membuf_skip_bytes(BLOCK_HEADER_WIRE_SIZE);
+  block_header.data_offset = write_pos;
+  // storing first table
+  struct fcb_table_header_s th        =
+                              {
+                                .magic = TBL_MAGIC,
+                                .table_id = SINGLE_RECORD_TABLE_ID,
+                                .record_size=SINGLE_RECORD_TABLE_SIZE,
+                                .num_records=1,
+                                .first_record_id=0
+                              };
+  ptrdiff_t                 crc_start = write_pos;
+  write_pos = membuf_write_bytes((uint8_t const *) &th, sizeof th);
+  uint8_t const * ptbl = generate_single_table();
+  write_pos = membuf_write_bytes(ptbl, SINGLE_RECORD_TABLE_SIZE);
+  // storing part of second table
+  size_t       avail              = membuf_bytes_available();
+  size_t const rec_in_first_chunk = (avail - sizeof th) / BIG_1_RECORD_SIZE;
+  th        = (struct fcb_table_header_s)
+    {
+      .magic = TBL_MAGIC,
+      .table_id = BIG_1_TABLE_ID,
+      .record_size= BIG_1_RECORD_SIZE,
+      .num_records=rec_in_first_chunk,
+      .first_record_id=0
+    };
+  write_pos = membuf_write_bytes((uint8_t const *) &th, sizeof th);
+  ptbl      = generate_big_one();
+  write_pos = membuf_write_bytes(ptbl, rec_in_first_chunk * BIG_1_RECORD_SIZE);
+  block_header.crc32 = membuf_calc_crc32(crc_start, write_pos);
+  membuf_rewind(0);
+  (void) membuf_write_bytes((uint8_t const *) &block_header, BLOCK_HEADER_WIRE_SIZE);
+  membuf_shuffle_buffer();
+  membuf_rewind(0);
+  // writing first block
+  block_id_t blk         = nandemu_find_and_erase_next_block(0, NUM_BLOCKS);
+  int        prog_result = nandemu_block_prog(blk, membuf_current_position());
+  while (prog_result != NANDEMU_E_NONE)
+    {
+      blk         = nandemu_find_and_erase_next_block(blk, NUM_BLOCKS);
+      prog_result = nandemu_block_prog(blk, membuf_current_position());
+    }
+  // first block stored to "NAND"
+
+  // prepare the rest of big table
+  // serch for next block
+  block_id_t next_blk = nandemu_next_block_id(blk);
+  next_blk     = nandemu_find_and_erase_next_block(next_blk, blk);
+  // prepare new block header
+  block_header = (struct fcb_block_header_s)
+    {
+      .magic=FCB_MAGIC,
+      .ts_marker=hibernation_session_id,
+      .ordinal=++block_ordinal
+    };
 }
 
 int main()
@@ -316,7 +378,7 @@ int main()
 //  test_format_nand();
 //  test_empty_block_iteration();
 //  test_first_write();
-  test_create_block();
+//  test_create_block();
   test_save_two_tables();
 
   return 0;
