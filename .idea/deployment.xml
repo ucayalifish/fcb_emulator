@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" remoteFilesAllowedToDisappearOnAutoupload="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="VagrantLFS (8f0c2b39-c2d5-40ab-a381-8eaba7182734)" remoteFilesAllowedToDisappearOnAutoupload="false">
     <serverData>
       <paths name="VagrantLFS (8f0c2b39-c2d5-40ab-a381-8eaba7182734)">
         <serverdata>
@@ -13,5 +13,6 @@
         </serverdata>
       </paths>
     </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

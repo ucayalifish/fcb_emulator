@@ -7,7 +7,7 @@
 #include <assert.h>
 #include "experimental.h"
 #include "utils.h"
-#include "libfcb/inc/fcb.h"
+#include <fcb.h>
 #include "tables.h"
 
 __attribute__((unused)) static void nand_init_test(void)
@@ -262,13 +262,13 @@ __attribute__((unused)) static void test_create_block(void)
   printf("Block start data offset: %d\n", current);
 
   struct fcb_table_header_s th        =
-                              {
-                                .magic = TBL_MAGIC,
-                                .table_id = SINGLE_RECORD_TABLE_ID,
-                                .record_size=SINGLE_RECORD_TABLE_SIZE,
-                                .num_records=1,
-                                .first_record_id=0
-                              };
+                                {
+                                    .magic = TBL_MAGIC,
+                                    .table_id = SINGLE_RECORD_TABLE_ID,
+                                    .record_size=SINGLE_RECORD_TABLE_SIZE,
+                                    .num_records=1,
+                                    .first_record_id=0
+                                };
   ptrdiff_t const           crc_start = current;
   current = membuf_write_bytes((uint8_t const *) &th, sizeof th);
   uint8_t const * ptbl = generate_single_table();
@@ -278,13 +278,13 @@ __attribute__((unused)) static void test_create_block(void)
   size_t const slop       = (avail - sizeof th) % BIG_1_RECORD_SIZE;
   assert(num_of_rec * BIG_1_RECORD_SIZE + slop + sizeof th == avail);
   th      = (struct fcb_table_header_s)
-    {
-      .magic = TBL_MAGIC,
-      .table_id = BIG_1_TABLE_ID,
-      .record_size= BIG_1_RECORD_SIZE,
-      .num_records=num_of_rec,
-      .first_record_id=0
-    };
+      {
+          .magic = TBL_MAGIC,
+          .table_id = BIG_1_TABLE_ID,
+          .record_size= BIG_1_RECORD_SIZE,
+          .num_records=num_of_rec,
+          .first_record_id=0
+      };
   current = membuf_write_bytes((uint8_t const *) &th, sizeof th);
   ptbl    = generate_big_one();
   current = membuf_write_bytes(ptbl, num_of_rec * BIG_1_RECORD_SIZE);
@@ -312,13 +312,13 @@ static void test_save_two_tables(void)
   block_header.data_offset = write_pos;
   // storing first table
   struct fcb_table_header_s th        =
-                              {
-                                .magic = TBL_MAGIC,
-                                .table_id = SINGLE_RECORD_TABLE_ID,
-                                .record_size=SINGLE_RECORD_TABLE_SIZE,
-                                .num_records=1,
-                                .first_record_id=0
-                              };
+                                {
+                                    .magic = TBL_MAGIC,
+                                    .table_id = SINGLE_RECORD_TABLE_ID,
+                                    .record_size=SINGLE_RECORD_TABLE_SIZE,
+                                    .num_records=1,
+                                    .first_record_id=0
+                                };
   ptrdiff_t                 crc_start = write_pos;
   write_pos = membuf_write_bytes((uint8_t const *) &th, sizeof th);
   uint8_t const * ptbl = generate_single_table();
@@ -327,13 +327,13 @@ static void test_save_two_tables(void)
   size_t       avail              = membuf_bytes_available();
   size_t const rec_in_first_chunk = (avail - sizeof th) / BIG_1_RECORD_SIZE;
   th        = (struct fcb_table_header_s)
-    {
-      .magic = TBL_MAGIC,
-      .table_id = BIG_1_TABLE_ID,
-      .record_size= BIG_1_RECORD_SIZE,
-      .num_records=rec_in_first_chunk,
-      .first_record_id=0
-    };
+      {
+          .magic = TBL_MAGIC,
+          .table_id = BIG_1_TABLE_ID,
+          .record_size= BIG_1_RECORD_SIZE,
+          .num_records=rec_in_first_chunk,
+          .first_record_id=0
+      };
   write_pos = membuf_write_bytes((uint8_t const *) &th, sizeof th);
   ptbl      = generate_big_one();
   write_pos = membuf_write_bytes(ptbl, rec_in_first_chunk * BIG_1_RECORD_SIZE);
@@ -350,19 +350,23 @@ static void test_save_two_tables(void)
       blk         = nandemu_find_and_erase_next_block(blk, NUM_BLOCKS);
       prog_result = nandemu_block_prog(blk, membuf_current_position());
     }
-  // first block stored to "NAND"
+  // first block stored to “NAND”
 
   // prepare the rest of big table
-  // serch for next block
+  // search for next block
   block_id_t next_blk = nandemu_next_block_id(blk);
   next_blk     = nandemu_find_and_erase_next_block(next_blk, blk);
   // prepare new block header
   block_header = (struct fcb_block_header_s)
-    {
-      .magic=FCB_MAGIC,
-      .ts_marker=hibernation_session_id,
-      .ordinal=++block_ordinal
-    };
+      {
+          .magic=FCB_MAGIC,
+          .ts_marker=hibernation_session_id,
+          .ordinal=++block_ordinal
+      };
+  write_pos    = membuf_skip_bytes(BLOCK_HEADER_WIRE_SIZE);
+  block_header.data_offset = write_pos;
+  avail = membuf_bytes_available();
+  size_t required = BIG_1_TABLE_SIZE - BIG_1_RECORD_SIZE * rec_in_first_chunk;
 }
 
 int main()
