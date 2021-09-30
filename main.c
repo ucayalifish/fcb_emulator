@@ -349,24 +349,27 @@ __attribute__((unused)) static void test_save_two_tables(void)
     }
   write_pos = membuf_write_bytes(p_single, SINGLE_RECORD_TABLE_SIZE);
   // storing part of second table
-  size_t       avail              = membuf_bytes_available();
-  size_t const rec_in_first_chunk = (avail - sizeof th) / BIG_1_RECORD_SIZE;
+  size_t avail        = membuf_bytes_available();
+  size_t rec_to_write = (avail - sizeof th) / BIG_1_RECORD_SIZE;
+  size_t bytes_rest   = BIG_1_TABLE_SIZE - BIG_1_RECORD_SIZE * rec_to_write;
+  size_t rec_written  = 0;
+
   th        = (struct fcb_table_header_s)
     {
       .magic = TBL_MAGIC,
       .table_id = BIG_1_TABLE_ID,
       .record_size= BIG_1_RECORD_SIZE,
-      .num_records=rec_in_first_chunk,
+      .num_records=rec_to_write,
       .first_record_id=0
     };
   write_pos = membuf_write_bytes((uint8_t const *) &th, sizeof th);
   uint8_t const * p_big1 = generate_big_one();
-  if(!p_big1)
+  if (!p_big1)
     {
       printf("\ttest_save_two_tables: failed to allocate big1 table\n");
       goto dealloc_;
     }
-  write_pos = membuf_write_bytes(p_big1, rec_in_first_chunk * BIG_1_RECORD_SIZE);
+  write_pos = membuf_write_bytes(p_big1, rec_to_write * BIG_1_RECORD_SIZE);
   block_header.crc32 = membuf_calc_crc32(crc_start, write_pos);
   membuf_rewind(0);
   (void) membuf_write_bytes((uint8_t const *) &block_header, BLOCK_HEADER_WIRE_SIZE);
@@ -380,9 +383,11 @@ __attribute__((unused)) static void test_save_two_tables(void)
       blk         = nandemu_find_and_erase_next_block(blk, NUM_BLOCKS);
       prog_result = nandemu_block_prog(blk, membuf_current_position());
     }
+  printf("\ttest_save_two_tables: written %d big1 records, %d bytes to write\n", rec_to_write, bytes_rest);
+  rec_written += rec_to_write;
   // first block stored to “NAND”
 
-  // prepare the rest of big table
+  // prepare the bytes_rest of big table
   // search for next block
   block_id_t next_blk = nandemu_next_block_id(blk);
   next_blk     = nandemu_find_and_erase_next_block(next_blk, blk);
@@ -394,10 +399,38 @@ __attribute__((unused)) static void test_save_two_tables(void)
       .ordinal=++block_ordinal
     };
   write_pos    = membuf_skip_bytes(BLOCK_HEADER_WIRE_SIZE);
+  crc_start = write_pos;
   block_header.data_offset = write_pos;
-  avail = membuf_bytes_available();
-  size_t required = BIG_1_TABLE_SIZE - BIG_1_RECORD_SIZE * rec_in_first_chunk;
+  avail        = membuf_bytes_available();
+  rec_to_write = (avail - sizeof th) / BIG_1_RECORD_SIZE;
+  bytes_rest   = bytes_rest - BIG_1_RECORD_SIZE * rec_to_write;
 
+  th = (struct fcb_table_header_s)
+    {
+      .magic = TBL_MAGIC,
+      .table_id = BIG_1_TABLE_ID,
+      .record_size= BIG_1_RECORD_SIZE,
+      .num_records=rec_to_write,
+      .first_record_id=rec_written
+    };
+  write_pos = membuf_write_bytes((uint8_t const *) &th, sizeof th);
+  p_big1 = p_big1 + BIG_1_RECORD_SIZE * rec_written;
+  write_pos = membuf_write_bytes(p_big1, rec_to_write * BIG_1_RECORD_SIZE);
+  block_header.crc32 = membuf_calc_crc32(crc_start, write_pos);
+  membuf_rewind(0);
+  (void) membuf_write_bytes((uint8_t const *) &block_header, BLOCK_HEADER_WIRE_SIZE);
+  membuf_shuffle_buffer();
+  membuf_rewind(0);
+  // programming second block
+  prog_result = nandemu_block_prog(blk, membuf_current_position());
+  while (prog_result != NANDEMU_E_NONE)
+    {
+      blk         = nandemu_find_and_erase_next_block(blk, NUM_BLOCKS);
+      prog_result = nandemu_block_prog(blk, membuf_current_position());
+    }
+  printf("\ttest_save_two_tables: written %d big1 records, %d bytes to write\n", rec_to_write, bytes_rest);
+  rec_written += rec_to_write;
+  // first block stored to “NAND”
 
 dealloc_:
   free_table(p_single);
