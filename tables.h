@@ -27,4 +27,6 @@ uint8_t const * generate_big_one(void);
 
 uint8_t const * generate_big_two(void);
 
+void free_table(void const * tbl);
+
 #endif //FCB_EMULATOR_TABLES_H
